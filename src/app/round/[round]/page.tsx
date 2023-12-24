@@ -1,5 +1,3 @@
-"use client";
-
 import Title from "@/components/title";
 import dynamic from "next/dynamic";
 

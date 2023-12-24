@@ -17,7 +17,6 @@ interface PlayerState {
   getTotalScore: (id: number) => number;
   addScoreForRound: (id: number, round: number, score: number) => void;
   getNumberOfRounds: () => number;
-  addRandomScoresForAllPlayers: () => void;
   resetScores: () => void;
   getPlayersSortedByScore: () => {
     id: number;
@@ -49,9 +48,7 @@ export const usePlayerStore = create<PlayerState>()(
         setPlayerName: (id, name) => {
           if (name.trim() === "") {
             // If name is empty, remove the player
-            const updatedPlayers = { ...get().players };
-            delete updatedPlayers[id];
-            set({ players: updatedPlayers });
+            get().removePlayer(id);
           } else {
             // Set or update player name
             set((state) => ({
@@ -107,22 +104,6 @@ export const usePlayerStore = create<PlayerState>()(
             (player) => Object.values(player.scores)?.length
           );
           return Math.max(0, ...playerScores) || 0; // Return the maximum length of scores array
-        },
-
-        addRandomScoresForAllPlayers: () => {
-          const numberOfRounds = get().getNumberOfRounds();
-          const randomScore = () => Math.floor(Math.random() * 9) * 20;
-
-          Object.keys(get().players).forEach((id) => {
-            console.log(`Adding random scores for player ${id}`);
-            for (
-              let round = numberOfRounds;
-              round < numberOfRounds + 1;
-              round++
-            ) {
-              get().addScoreForRound(Number(id), round, randomScore());
-            }
-          });
         },
 
         resetScores: () => {

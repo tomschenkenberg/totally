@@ -1,3 +1,5 @@
+"use client";
+
 // scoreboard.tsx
 import { Player, usePlayerStore } from "@/lib/store";
 import { Button } from "./ui/button";

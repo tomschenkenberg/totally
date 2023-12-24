@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import PlayerAvatar from "./avatar";
 
-const PlayerScore = ({ id, player }: { id: string; player: Player }) => {
+const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
   const getTotalScore = usePlayerStore((state) => state.getTotalScore);
   return (
     <Dialog>
@@ -23,16 +23,14 @@ const PlayerScore = ({ id, player }: { id: string; player: Player }) => {
             <PlayerAvatar player={player} />
             <span className="text-xl font-bold">{player.name}</span>
           </div>
-          <span className="text-2xl font-bold ml-4">
-            {getTotalScore(parseInt(id))}
-          </span>
+          <span className="text-2xl font-bold ml-4">{getTotalScore(id)}</span>
         </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-6xl">{player.name}</DialogTitle>
           <DialogDescription className="text-9xl font-bold p-4">
-            {getTotalScore(parseInt(id))}
+            {getTotalScore(id)}
           </DialogDescription>
         </DialogHeader>
       </DialogContent>
@@ -41,7 +39,9 @@ const PlayerScore = ({ id, player }: { id: string; player: Player }) => {
 };
 
 const Scoreboard = () => {
-  const players = usePlayerStore((state) => state.players);
+  const sortedPlayers = usePlayerStore((state) =>
+    state.getPlayersSortedByScore()
+  );
   const numberOfRounds = usePlayerStore((state) => state.getNumberOfRounds);
   const nextRound = numberOfRounds() + 1;
 
@@ -51,7 +51,7 @@ const Scoreboard = () => {
         After <span className="font-bold">{numberOfRounds()}</span> rounds
       </div>
       <div className="flex flex-col space-y-4 pb-6">
-        {Object.entries(players).map(([id, player]) => (
+        {sortedPlayers.map(({ id, player }) => (
           <PlayerScore key={id} id={id} player={player} />
         ))}
       </div>

@@ -19,6 +19,11 @@ interface PlayerState {
   getNumberOfRounds: () => number;
   addRandomScoresForAllPlayers: () => void;
   resetScores: () => void;
+  getPlayersSortedByScore: () => {
+    id: number;
+    player: Player;
+    totalScore: number;
+  }[];
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -26,6 +31,18 @@ export const usePlayerStore = create<PlayerState>()(
     persist(
       (set, get) => ({
         players: {},
+
+        getPlayersSortedByScore: () => {
+          const playersArray = Object.entries(get().players).map(
+            ([id, player]) => ({
+              id: Number(id),
+              player,
+              totalScore: get().getTotalScore(Number(id)),
+            })
+          );
+
+          return playersArray.sort((a, b) => b.totalScore - a.totalScore);
+        },
 
         getPlayerName: (id) => get().players[id]?.name || "",
 
@@ -43,7 +60,7 @@ export const usePlayerStore = create<PlayerState>()(
                 [id]: {
                   ...state.players[id],
                   name,
-                  scores: state.players[id]?.scores || [],
+                  scores: state.players[id]?.scores || {},
                 },
               },
             }));

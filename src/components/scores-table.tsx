@@ -116,6 +116,8 @@ function DataTable<TData, TValue>({
                     : ""
                 }
                 onClick={() => {
+                  // do nothing if the row is the total row:
+                  if (index === table.getRowModel().rows.length - 1) return;
                   const roundNumber = parseInt(row.id) + 1;
                   router.push(`/round/${roundNumber}`);
                 }}>

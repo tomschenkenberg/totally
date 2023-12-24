@@ -65,7 +65,7 @@ const Round = ({ round }: { round: number }) => {
       </div>
       <Link href={`/scores`}>
         <Button variant="default" className="w-full">
-          Back
+          Done
         </Button>
       </Link>
     </>

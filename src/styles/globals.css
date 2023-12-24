@@ -1,3 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .total-row {
+    font-weight: bold;
+    background-color: #444; 
+  }
+}

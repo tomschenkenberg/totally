@@ -8,8 +8,8 @@ const PlayerInput = dynamic(() => import("@/components/player-input"), {
   ssr: false,
 });
 
-export default function Players() {
-  const numberOfPlayers = 5;
+export default function PlayersPage() {
+  const numberOfPlayers = 6;
   return (
     <>
       <Title>Players</Title>

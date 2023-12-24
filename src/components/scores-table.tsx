@@ -1,6 +1,6 @@
 "use client";
 
-import { Player, usePlayerStore } from "@/lib/store";
+import { Player, Players, usePlayerStore } from "@/lib/store";
 import * as React from "react";
 import {
   ColumnDef,
@@ -16,21 +16,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRouter } from "next/navigation";
 
 type TableDataRow = {
   round: number | string; // Round number or 'Total'
   [playerId: string]: number | string; // Scores for each player, indexed by player ID
 };
 
-function getData(players: { [id: number]: Player }): TableDataRow[] {
+function getData(players: Players): TableDataRow[] {
   const rounds = usePlayerStore.getState().getNumberOfRounds();
   const data: TableDataRow[] = Array.from(
     { length: rounds },
     (_, roundIndex) => {
-      const roundData: TableDataRow = { round: roundIndex + 1 }; // Round number
+      const round = roundIndex + 1;
+      const roundData: TableDataRow = { round }; // Round number
+
       Object.entries(players).forEach(([id, player]) => {
-        roundData[id] = player.scores[roundIndex] || 0; // Default to 0 if no score
+        roundData[id] = player.scores[round] || 0; // Access scores by round number
       });
+
       return roundData;
     }
   );
@@ -38,17 +42,20 @@ function getData(players: { [id: number]: Player }): TableDataRow[] {
   // Add total scores row
   const totalScoresRow: TableDataRow = { round: "Total" };
   Object.entries(players).forEach(([id, player]) => {
-    totalScoresRow[id] = player.scores.reduce((sum, score) => sum + score, 0);
+    totalScoresRow[id] = Object.values(player.scores).reduce(
+      (sum, score) => sum + score,
+      0
+    );
   });
 
   data.push(totalScoresRow);
   return data;
 }
 
-function getColumns(players: { [id: number]: Player }): ColumnDef<any>[] {
+function getColumns(players: Players): ColumnDef<any>[] {
   const playerColumns = Object.entries(players).map(([id, player]) => ({
     accessorKey: id,
-    header: player.name,
+    header: player.name.slice(0, 2),
   }));
 
   const roundColumn: ColumnDef<any> = {
@@ -69,6 +76,7 @@ function DataTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
+  const router = useRouter();
   const table = useReactTable({
     data,
     columns,
@@ -83,7 +91,7 @@ function DataTable<TData, TValue>({
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className="text-right">
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -106,7 +114,11 @@ function DataTable<TData, TValue>({
                   index === table.getRowModel().rows.length - 1
                     ? "total-row"
                     : ""
-                }>
+                }
+                onClick={() => {
+                  const roundNumber = parseInt(row.id) + 1;
+                  router.push(`/round/${roundNumber}`);
+                }}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className="text-right">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

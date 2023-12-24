@@ -10,13 +10,15 @@ const ScoresTable = dynamic(() => import("@/components/scores-table"), {
   ssr: false,
 });
 
-export default function Scores() {
+export default function ScoresPage() {
   const reset = usePlayerStore((state) => state.resetScores);
   return (
     <>
       <Title>Scores</Title>
       <ScoresTable />
-      <Button onClick={reset}>Reset Scores</Button>
+      <Button onClick={reset} variant="destructive">
+        Reset Scores
+      </Button>
     </>
   );
 }

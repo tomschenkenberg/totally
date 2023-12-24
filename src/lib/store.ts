@@ -1,16 +1,18 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 
+export type Scores = { [round: number]: number };
 export interface Player {
   name: string;
-  scores: number[];
+  scores: Scores;
 }
+export type Players = { [id: number]: Player };
 
 interface PlayerState {
-  players: { [id: number]: Player };
+  players: Players;
   getPlayerName: (id: number) => string;
   setPlayerName: (id: number, name: string) => void;
-  getPlayerScores: (id: number) => number[];
+  getPlayerScores: (id: number) => Scores;
   removePlayer: (id: number) => void;
   getTotalScore: (id: number) => number;
   addScoreForRound: (id: number, round: number, score: number) => void;
@@ -48,7 +50,7 @@ export const usePlayerStore = create<PlayerState>()(
           }
         },
 
-        getPlayerScores: (id) => get().players[id]?.scores || [],
+        getPlayerScores: (id) => get().players[id]?.scores,
 
         removePlayer: (id) =>
           set((state) => {
@@ -59,8 +61,11 @@ export const usePlayerStore = create<PlayerState>()(
 
         getTotalScore: (id) => {
           const player = get().players[id];
-          return player && player.scores
-            ? player.scores.reduce((total, score) => total + score, 0)
+          return player
+            ? Object.values(player.scores).reduce(
+                (total, score) => total + score,
+                0
+              )
             : 0;
         },
 
@@ -68,16 +73,7 @@ export const usePlayerStore = create<PlayerState>()(
           set((state) => {
             const player = state.players[id];
             if (player) {
-              // Initialize the scores array if necessary and ensure it's the correct length
-              const updatedScores =
-                player.scores.length > round
-                  ? [...player.scores]
-                  : Array.from(
-                      { length: round + 1 },
-                      (_, i) => player.scores[i] || 0
-                    );
-
-              updatedScores[round] = score; // Set score for specific round
+              const updatedScores = { ...player.scores, [round]: score };
               return {
                 players: {
                   ...state.players,
@@ -85,20 +81,20 @@ export const usePlayerStore = create<PlayerState>()(
                 },
               };
             }
-            return state; // No change if player not found
+            return state;
           });
         },
 
         getNumberOfRounds: () => {
           const playerScores = Object.values(get().players).map(
-            (player) => player.scores?.length
+            (player) => Object.values(player.scores)?.length
           );
           return Math.max(0, ...playerScores) || 0; // Return the maximum length of scores array
         },
 
         addRandomScoresForAllPlayers: () => {
           const numberOfRounds = get().getNumberOfRounds();
-          const randomScore = () => Math.floor(Math.random() * 10) * 10;
+          const randomScore = () => Math.floor(Math.random() * 9) * 20;
 
           Object.keys(get().players).forEach((id) => {
             console.log(`Adding random scores for player ${id}`);

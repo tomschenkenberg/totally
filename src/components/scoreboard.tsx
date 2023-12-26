@@ -1,5 +1,5 @@
 // scoreboard.tsx
-import { Player, usePlayerStore } from "@/lib/store";
+import { Player, usePlayerStore } from "@/lib/stores/players";
 import { Button } from "./ui/button";
 
 import {
@@ -56,7 +56,7 @@ const Scoreboard = () => {
         ))}
       </div>
       <Link href={`/round/${nextRound}`}>
-        <Button variant="default" className="w-full">
+        <Button variant="default" className="w-full text-xl">
           Add scores for round {nextRound}
         </Button>
       </Link>

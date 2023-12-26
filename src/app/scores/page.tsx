@@ -1,7 +1,7 @@
 "use client";
 
 import Title from "@/components/title";
-import { usePlayerStore } from "@/lib/store";
+import { usePlayerStore } from "@/lib/stores/players";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";

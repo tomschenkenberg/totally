@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Cross1Icon } from "@radix-ui/react-icons";
-import { usePlayerStore } from "@/lib/store";
+import { usePlayerStore } from "@/lib/stores/players";
 
 interface PlayerInputProps {
   id: number;

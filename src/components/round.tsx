@@ -1,7 +1,7 @@
 "use client";
 
 // scoreboard.tsx
-import { Player, usePlayerStore } from "@/lib/store";
+import { Player, usePlayerStore } from "@/lib/stores/players";
 import { Button } from "./ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -46,6 +46,7 @@ const InputPlayerScore = ({
       <span className="text-2xl font-bold ml-4">
         <Input
           type="number"
+          inputMode="numeric"
           placeholder="Score"
           value={inputValue}
           onChange={handleScoreChange}

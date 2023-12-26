@@ -1,6 +1,6 @@
 "use client";
 
-import { Player, Players, usePlayerStore } from "@/lib/store";
+import { Player, Players, usePlayerStore } from "@/lib/stores/players";
 import * as React from "react";
 import {
   ColumnDef,
@@ -40,7 +40,7 @@ function getData(players: Players): TableDataRow[] {
   );
 
   // Add total scores row
-  const totalScoresRow: TableDataRow = { round: "Total" };
+  const totalScoresRow: TableDataRow = { round: "" };
   Object.entries(players).forEach(([id, player]) => {
     totalScoresRow[id] = Object.values(player.scores).reduce(
       (sum, score) => sum + score,

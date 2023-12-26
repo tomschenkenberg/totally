@@ -25,10 +25,11 @@ export default function MainMenu() {
       <nav className="isolate inline-flex rounded-md shadow-sm">
         <NavButton label="Scoreboard" className="rounded-l-md" href="/" />
         <NavButton label="Scores" className="-ml-px" href="/scores" />
+        <NavButton label="Players" className="-ml-px" href="/players" />
         <NavButton
-          label="Players"
+          label="Share"
           className="-ml-px rounded-r-md"
-          href="/players"
+          href="/share"
         />
       </nav>
     </div>

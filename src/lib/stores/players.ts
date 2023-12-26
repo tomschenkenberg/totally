@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
+import { saveStateToAPI } from "../api";
 
 export type Scores = { [round: number]: number };
 export interface Player {
@@ -62,16 +63,19 @@ export const usePlayerStore = create<PlayerState>()(
               },
             }));
           }
+          saveStateToAPI(get());
         },
 
         getPlayerScores: (id) => get().players[id]?.scores,
 
-        removePlayer: (id) =>
+        removePlayer: (id) => {
           set((state) => {
             const updatedPlayers = { ...state.players };
             delete updatedPlayers[id];
             return { players: updatedPlayers };
-          }),
+          });
+          saveStateToAPI(get());
+        },
 
         getTotalScore: (id) => {
           const player = get().players[id];
@@ -97,6 +101,7 @@ export const usePlayerStore = create<PlayerState>()(
             }
             return state;
           });
+          saveStateToAPI(get());
         },
 
         getNumberOfRounds: () => {
@@ -115,6 +120,7 @@ export const usePlayerStore = create<PlayerState>()(
               ])
             ),
           }));
+          saveStateToAPI(get());
         },
       }),
       {

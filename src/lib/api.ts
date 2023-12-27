@@ -1,9 +1,9 @@
-import { useShareCodeStore } from "./stores/share-code";
+import { useSharingStore } from "./stores/sharing";
 
 export async function saveStateToAPI(state: any) {
-  const uniqueCode = useShareCodeStore.getState().getUniqueCode();
+  const uniqueCode = useSharingStore.getState().uniqueAppCode;
   try {
-    const response = await fetch(`/api/save/${uniqueCode}`, {
+    const response = await fetch(`/api/players/${uniqueCode}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

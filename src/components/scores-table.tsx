@@ -122,7 +122,9 @@ function DataTable<TData, TValue>({
                   router.push(`/round/${roundNumber}`);
                 }}>
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="text-right">
+                  <TableCell
+                    key={cell.id}
+                    className="text-right font-mono px-2">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

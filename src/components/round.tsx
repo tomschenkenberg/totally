@@ -45,6 +45,7 @@ const InputPlayerScore = ({
       </div>
       <span className="text-2xl font-bold ml-4">
         <Input
+          className="text-xl font-semibold font-mono"
           type="number"
           inputMode="numeric"
           placeholder="Score"

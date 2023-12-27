@@ -18,6 +18,7 @@ const PlayerInput = ({ id, placeholder }: PlayerInputProps) => {
   return (
     <div className="relative space-y-2 text-base">
       <Input
+        className="text-xl font-semibold p-3 font-mono"
         id={`player-input-${id}`}
         placeholder={placeholder}
         value={player?.name || ""}

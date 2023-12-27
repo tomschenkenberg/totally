@@ -27,9 +27,9 @@ export default function MainMenu() {
         <NavButton label="Scores" className="-ml-px" href="/scores" />
         <NavButton label="Players" className="-ml-px" href="/players" />
         <NavButton
-          label="Share"
+          label="Sharing"
           className="-ml-px rounded-r-md"
-          href="/share"
+          href="/sharing"
         />
       </nav>
     </div>

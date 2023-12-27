@@ -23,7 +23,9 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
             <PlayerAvatar player={player} />
             <span className="text-xl font-bold">{player.name}</span>
           </div>
-          <span className="text-2xl font-bold ml-4">{getTotalScore(id)}</span>
+          <span className="text-2xl font-bold ml-4 font-mono">
+            {getTotalScore(id)}
+          </span>
         </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

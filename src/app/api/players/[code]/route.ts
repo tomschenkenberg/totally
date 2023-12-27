@@ -31,6 +31,16 @@ export async function GET(
 ) {
   try {
     const filePath = path.join(process.cwd(), "data", `${params.code}.json`);
+
+    if (!fs.existsSync(filePath)) {
+      return new Response(JSON.stringify({ error: "Not Found" }), {
+        status: 404,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+
     const data = fs.readFileSync(filePath, "utf8");
     return new Response(data, {
       headers: {

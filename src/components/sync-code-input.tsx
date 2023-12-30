@@ -62,7 +62,7 @@ const SyncCodeInput = () => {
         <Button
           variant="default"
           className="w-full text-xl"
-          onClick={() => syncWithServer(currentSyncCode)}>
+          onClick={() => syncWithServer()}>
           Sync
         </Button>
       )}

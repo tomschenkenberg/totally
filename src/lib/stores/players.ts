@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
-import { saveStateToAPI } from "../api";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
+import { useSharingStore } from "./sharing";
 
 export type Scores = { [round: number]: number };
 export interface Player {
@@ -8,6 +8,57 @@ export interface Player {
   scores: Scores;
 }
 export type Players = { [id: number]: Player };
+
+async function saveStateToAPI(state: any) {
+  const uniqueCode = useSharingStore.getState().getTargetCode();
+  try {
+    const response = await fetch(`/api/players/${uniqueCode}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(state),
+    });
+    const data = await response.json();
+    console.log("State saved for code:", uniqueCode);
+  } catch (error) {
+    console.error("Failed to save state:", error);
+  }
+}
+
+async function fetchStateFromAPI() {
+  const uniqueCode = useSharingStore.getState().getTargetCode();
+  try {
+    const response = await fetch(`/api/players/${uniqueCode}`);
+    const data = await response.json();
+    console.log("State loaded for code:", uniqueCode);
+    return data;
+  } catch (error) {
+    console.error("Failed to load state:", error);
+  }
+}
+
+const customStorage = {
+  getItem: async (name: any) => {
+    // Retrieve from Local Storage
+    const localData = localStorage.getItem(name);
+    if (localData) return localData;
+
+    // Optional: Fetch from server if not found in Local Storage
+    const data = await fetchStateFromAPI();
+    return JSON.stringify(data);
+  },
+  setItem: (name: any, value: any) => {
+    // Save to Local Storage
+    localStorage.setItem(name, value);
+
+    // Save to Server
+    saveStateToAPI(JSON.parse(value));
+  },
+  removeItem: (name: any) => {
+    // Implement removeItem if needed
+  },
+};
 
 interface PlayerState {
   players: Players;
@@ -24,6 +75,8 @@ interface PlayerState {
     player: Player;
     totalScore: number;
   }[];
+
+  fetchDataFromServer: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>()(
@@ -63,7 +116,6 @@ export const usePlayerStore = create<PlayerState>()(
               },
             }));
           }
-          saveStateToAPI(get());
         },
 
         getPlayerScores: (id) => get().players[id]?.scores,
@@ -74,7 +126,6 @@ export const usePlayerStore = create<PlayerState>()(
             delete updatedPlayers[id];
             return { players: updatedPlayers };
           });
-          saveStateToAPI(get());
         },
 
         getTotalScore: (id) => {
@@ -101,7 +152,6 @@ export const usePlayerStore = create<PlayerState>()(
             }
             return state;
           });
-          saveStateToAPI(get());
         },
 
         getNumberOfRounds: () => {
@@ -120,11 +170,16 @@ export const usePlayerStore = create<PlayerState>()(
               ])
             ),
           }));
-          saveStateToAPI(get());
+        },
+
+        fetchDataFromServer: async () => {
+          const data = await fetchStateFromAPI();
+          set(data);
         },
       }),
       {
         name: "player-store",
+        storage: createJSONStorage(() => customStorage),
       }
     )
   )

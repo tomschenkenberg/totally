@@ -10,15 +10,17 @@ interface SharingState {
   uniqueAppCode: string;
   syncWithCode: string | null;
   getUniqueAppCode: () => string;
+  resetUniqueAppCode: () => void;
   setSyncWithCode: (newCode: string | null) => void;
   getSyncWithCode: () => string | null;
+  getTargetCode: () => string;
 }
 
 export const useSharingStore = create<SharingState>()(
   devtools(
     persist(
       (set, get) => ({
-        uniqueAppCode: "",
+        uniqueAppCode: generateUniqueCode(),
         syncWithCode: null,
 
         getUniqueAppCode: () => {
@@ -28,6 +30,10 @@ export const useSharingStore = create<SharingState>()(
           return get().uniqueAppCode;
         },
 
+        resetUniqueAppCode: () => {
+          set({ uniqueAppCode: generateUniqueCode() });
+        },
+
         setSyncWithCode: (newCode) => {
           console.log("setSyncWithCode", newCode);
           set({ syncWithCode: newCode });
@@ -35,6 +41,10 @@ export const useSharingStore = create<SharingState>()(
 
         getSyncWithCode: () => {
           return get().syncWithCode;
+        },
+
+        getTargetCode: () => {
+          return get().syncWithCode || get().uniqueAppCode;
         },
       }),
       { name: "sharing-store" }

@@ -10,6 +10,8 @@ export async function POST(
     const filePath = path.join(process.cwd(), "data", `${params.code}.json`);
     fs.writeFileSync(filePath, JSON.stringify(requestData));
 
+    console.log("State saved for code:", params.code);
+
     return new Response(JSON.stringify({ success: true }), {
       headers: {
         "Content-Type": "application/json",
@@ -42,6 +44,8 @@ export async function GET(
     }
 
     const data = fs.readFileSync(filePath, "utf8");
+
+    console.log("State fetched for code:", params.code);
     return new Response(data, {
       headers: {
         "Content-Type": "application/json",

@@ -21,7 +21,7 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <PlayerAvatar player={player} />
-            <span className="text-xl font-bold">{player.name}</span>
+            <span className="text-2xl font-bold">{player.name}</span>
           </div>
           <span className="text-2xl font-bold ml-4 font-mono">
             {getTotalScore(id)}

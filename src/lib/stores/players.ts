@@ -9,57 +9,6 @@ export interface Player {
 }
 export type Players = { [id: number]: Player };
 
-async function saveStateToAPI(state: any) {
-  const uniqueCode = useSharingStore.getState().getTargetCode();
-  try {
-    const response = await fetch(`/api/players/${uniqueCode}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(state),
-    });
-    const data = await response.json();
-    console.log("State saved for code:", uniqueCode);
-  } catch (error) {
-    console.error("Failed to save state:", error);
-  }
-}
-
-async function fetchStateFromAPI() {
-  const uniqueCode = useSharingStore.getState().getTargetCode();
-  try {
-    const response = await fetch(`/api/players/${uniqueCode}`);
-    const data = await response.json();
-    console.log("State loaded for code:", uniqueCode);
-    return data;
-  } catch (error) {
-    console.error("Failed to load state:", error);
-  }
-}
-
-const customStorage = {
-  getItem: async (name: any) => {
-    // Retrieve from Local Storage
-    const localData = localStorage.getItem(name);
-    if (localData) return localData;
-
-    // Optional: Fetch from server if not found in Local Storage
-    const data = await fetchStateFromAPI();
-    return JSON.stringify(data);
-  },
-  setItem: (name: any, value: any) => {
-    // Save to Local Storage
-    localStorage.setItem(name, value);
-
-    // Save to Server
-    saveStateToAPI(JSON.parse(value));
-  },
-  removeItem: (name: any) => {
-    // Implement removeItem if needed
-  },
-};
-
 interface PlayerState {
   players: Players;
   getPlayerName: (id: number) => string;
@@ -70,14 +19,58 @@ interface PlayerState {
   addScoreForRound: (id: number, round: number, score: number) => void;
   getNumberOfRounds: () => number;
   resetScores: () => void;
-  getPlayersSortedByScore: () => {
+  getPlayersSortedByScore: () => Array<{
     id: number;
     player: Player;
     totalScore: number;
-  }[];
-
-  fetchDataFromServer: () => void;
+  }>;
+  fetchDataFromServer: () => Promise<void>;
 }
+
+async function callAPI(endpoint: string, method = "GET", body = null) {
+  const uniqueCode = useSharingStore.getState().getTargetCode();
+  const options: RequestInit = {
+    method,
+    headers: { "Content-Type": "application/json" },
+  };
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+  try {
+    const response = await fetch(
+      `/api/players/${uniqueCode}${endpoint}`,
+      options
+    );
+    if (!response.ok) {
+      throw new Error(`API call failed with status ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error("API call error:", error);
+    throw error; // Re-throw for handling in calling function
+  }
+}
+
+const customStorage = {
+  getItem: async (name: string) => {
+    // Retrieve from Local Storage
+    const localData = localStorage.getItem(name);
+    if (localData) return localData;
+
+    const data = await callAPI("/");
+    return JSON.stringify(data);
+  },
+  setItem: (name: string, value: string) => {
+    // Save to Local Storage
+    localStorage.setItem(name, value);
+
+    // Save to Server
+    callAPI("/", "POST", JSON.parse(value)); // Async, but not awaited
+  },
+  removeItem: (name: string) => {
+    localStorage.removeItem(name);
+  },
+};
 
 export const usePlayerStore = create<PlayerState>()(
   devtools(
@@ -171,10 +164,13 @@ export const usePlayerStore = create<PlayerState>()(
             ),
           }));
         },
-
         fetchDataFromServer: async () => {
-          const data = await fetchStateFromAPI();
-          set(data);
+          try {
+            const data = await callAPI("/");
+            set({ players: data.players });
+          } catch (error) {
+            console.error("Failed to fetch data:", error);
+          }
         },
       }),
       {

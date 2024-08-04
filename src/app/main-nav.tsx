@@ -22,7 +22,7 @@ export default function MainMenu() {
 
   return (
     <div className="flex justify-center">
-      <nav className="isolate inline-flex rounded-md shadow-sm">
+      <nav className="isolate inline-flex rounded-md shadow-sm flex-wrap">
         <NavButton label="Scoreboard" className="rounded-l-md" href="/" />
         <NavButton label="Scores" className="-ml-px" href="/scores" />
         <NavButton label="Players" className="-ml-px" href="/players" />

@@ -15,6 +15,7 @@ const PlayerAvatar: React.FC<AvatarProps> = ({ player }) => {
         src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(
           player.name
         )}`}
+        alt={player.name}
       />
       <AvatarFallback>
         {player.name.substring(0, 2).toUpperCase()}

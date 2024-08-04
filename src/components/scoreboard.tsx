@@ -16,27 +16,15 @@ import PlayerAvatar from "./avatar";
 const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
   const getTotalScore = usePlayerStore((state) => state.getTotalScore);
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <PlayerAvatar player={player} />
-            <span className="text-2xl font-bold">{player.name}</span>
-          </div>
-          <span className="text-2xl font-bold ml-4 font-mono">
-            {getTotalScore(id)}
-          </span>
-        </div>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-6xl">{player.name}</DialogTitle>
-          <DialogDescription className="text-9xl font-bold p-4">
-            {getTotalScore(id)}
-          </DialogDescription>
-        </DialogHeader>
-      </DialogContent>
-    </Dialog>
+    <div className="flex justify-between items-center">
+      <div className="flex items-center space-x-2">
+        <PlayerAvatar player={player} />
+        <span className="text-2xl font-bold">{player.name}</span>
+      </div>
+      <span className="text-2xl font-bold ml-4 font-mono">
+        {getTotalScore(id)}
+      </span>
+    </div>
   );
 };
 

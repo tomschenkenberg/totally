@@ -37,3 +37,8 @@ next-env.d.ts
 
 # app specifix
 data/
+
+# pwa
+sw.*
+workbox-*
+swe-worker-*

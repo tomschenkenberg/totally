@@ -1,15 +1,15 @@
-import Title from "@/components/title";
-import dynamic from "next/dynamic";
+import Title from "@/components/title"
+import dynamic from "next/dynamic"
 
 const Round = dynamic(() => import("@/components/round"), {
-  ssr: false,
-});
+    ssr: false
+})
 
 export default function RoundPage({ params }: { params: { round: string } }) {
-  return (
-    <>
-      <Title>Round {params.round}</Title>
-      <Round round={Number(params.round)} />
-    </>
-  );
+    return (
+        <>
+            <Title>Round {params.round}</Title>
+            <Round round={Number(params.round)} />
+        </>
+    )
 }

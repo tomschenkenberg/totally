@@ -8,10 +8,7 @@
     "description": "Manage and track scores for multiple players across multiple rounds of a game.",
     "author": "Tom M. Schenkenberg",
     "homepage_url": "https://schenkenberg.nl",
-    "permissions": [
-        "storage",
-        "tabs"
-    ],
+    "permissions": ["storage", "tabs"],
     "background_color": "#1E293B",
     "display": "standalone",
     "orientation": "portrait",

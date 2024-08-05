@@ -1,18 +1,18 @@
-"use client";
+"use client"
 
-import Title from "@/components/title";
-import { usePlayerStore } from "@/lib/stores/players";
-import dynamic from "next/dynamic";
+import Title from "@/components/title"
+import { usePlayerStore } from "@/lib/stores/players"
+import dynamic from "next/dynamic"
 
 const Scoreboard = dynamic(() => import("@/components/scoreboard"), {
-  ssr: false,
-});
+    ssr: false
+})
 
 export default function ScoreboardPage() {
-  return (
-    <>
-      <Title>Scoreboard</Title>
-      <Scoreboard />
-    </>
-  );
+    return (
+        <>
+            <Title>Scoreboard</Title>
+            <Scoreboard />
+        </>
+    )
 }

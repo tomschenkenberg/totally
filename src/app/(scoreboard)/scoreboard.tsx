@@ -6,6 +6,7 @@ import Link from "next/link"
 import PlayerAvatar from "@/components/avatar"
 import { useAtomValue } from "jotai"
 import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"
+import { AddNewScoresButton } from "@/components/add-scores-button"
 
 const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     const getTotalScore = useAtomValue(getTotalScoreAtom)
@@ -24,7 +25,6 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
 export default function Scoreboard() {
     const sortedPlayers = useAtomValue(getPlayersSortedByScoreAtom)
     const numberOfRounds = useAtomValue(getNumberOfRoundsAtom)
-    const nextRound = numberOfRounds + 1
 
     return (
         <>
@@ -36,11 +36,7 @@ export default function Scoreboard() {
                     <PlayerScore key={id} id={id} player={player} />
                 ))}
             </div>
-            <Link href={`/round/${nextRound}`}>
-                <Button variant="default" className="w-full text-xl">
-                    Add scores for round {nextRound}
-                </Button>
-            </Link>
+            <AddNewScoresButton />
         </>
     )
 }

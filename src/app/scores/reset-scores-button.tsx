@@ -31,7 +31,9 @@ export function ResetScoresButton() {
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive">Reset Scores</Button>
+                <Button variant="destructive" className="text-xl w-full sm:w-auto">
+                    Reset Scores
+                </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>

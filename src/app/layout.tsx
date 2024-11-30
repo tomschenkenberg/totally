@@ -37,8 +37,7 @@ function MainMenu() {
             <nav className="isolate inline-flex rounded-md shadow-sm flex-wrap">
                 <NavButton label="Scoreboard" className="rounded-l-md" href="/" />
                 <NavButton label="Scores" className="-ml-px" href="/scores" />
-                <NavButton label="Players" className="-ml-px" href="/players" />
-                <NavButton label="Sharing" className="-ml-px rounded-r-md" href="/sharing" />
+                <NavButton label="Players" className="-ml-px rounded-r-md" href="/players" />
             </nav>
         </div>
     )

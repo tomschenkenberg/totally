@@ -6,18 +6,11 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import PlayerAvatar from "../../../components/avatar"
 import React from "react"
-import {
-    playersAtom,
-    getPlayerScoresAtom,
-    addScoreForRoundAtom,
-    syncStorageAtom,
-    Player
-} from "@/lib/atoms/players"
+import { playersAtom, getPlayerScoresAtom, addScoreForRoundAtom, Player } from "@/lib/atoms/players"
 
 const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; round: number }) => {
     const getPlayerScores = useAtomValue(getPlayerScoresAtom)
     const [, addScoreForRound] = useAtom(addScoreForRoundAtom)
-    const [, syncStorage] = useAtom(syncStorageAtom)
 
     const [inputValue, setInputValue] = React.useState(getPlayerScores(id)[round]?.toString() || "")
 
@@ -29,7 +22,6 @@ const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; r
             const newScore = parseInt(scoreValue)
             if (!isNaN(newScore)) {
                 await addScoreForRound({ id, round, score: newScore })
-                await syncStorage()
             }
         }
     }

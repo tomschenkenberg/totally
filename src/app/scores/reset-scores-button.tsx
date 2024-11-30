@@ -13,11 +13,10 @@ import {
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog"
 import { useSetAtom } from "jotai"
-import { playersAtom, syncStorageAtom } from "@/lib/atoms/players"
+import { playersAtom } from "@/lib/atoms/players"
 
 export function ResetScoresButton() {
     const setPlayers = useSetAtom(playersAtom)
-    const syncStorage = useSetAtom(syncStorageAtom)
 
     const handleReset = async () => {
         setPlayers((prevPlayers) => {
@@ -27,7 +26,6 @@ export function ResetScoresButton() {
             )
             return resetPlayers
         })
-        await syncStorage()
     }
 
     return (

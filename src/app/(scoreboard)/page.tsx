@@ -1,5 +1,3 @@
-"use client"
-
 import Scoreboard from "@/app/(scoreboard)/scoreboard"
 import Title from "@/components/title"
 

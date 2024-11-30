@@ -1,11 +1,5 @@
-"use client"
-
 import Title from "@/components/title"
-import PlayerInput from "@/components/player-input"
-
-/* const PlayerInput = dynamic(() => import("@/components/player-input"), {
-  ssr: false,
-}); */
+import PlayerInput from "@/app/players/player-input"
 
 export default function PlayersPage() {
     const numberOfPlayers = 6

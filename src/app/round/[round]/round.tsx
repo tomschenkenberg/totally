@@ -1,10 +1,10 @@
 "use client"
 
 import { useAtom, useAtomValue } from "jotai"
-import { Button } from "./ui/button"
+import { Button } from "../../../components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import PlayerAvatar from "./avatar"
+import PlayerAvatar from "../../../components/avatar"
 import React from "react"
 import {
     playersAtom,

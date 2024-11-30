@@ -1,3 +1,5 @@
+"use client"
+
 import { Input } from "@/components/ui/input"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useAtom } from "jotai"

@@ -1,16 +1,7 @@
-"use client"
-
 import Title from "@/components/title"
 import { Card, CardContent } from "@/components/ui/card"
-import dynamic from "next/dynamic"
-
-const AppCode = dynamic(() => import("@/components/app-code"), {
-    ssr: false
-})
-
-const ShareCodeInput = dynamic(() => import("@/components/sync-code-input"), {
-    ssr: false
-})
+import AppCode from "@/app/sharing/app-code"
+import ShareCodeInput from "@/app/sharing/sync-code-input"
 
 export default function SharePage() {
     return (

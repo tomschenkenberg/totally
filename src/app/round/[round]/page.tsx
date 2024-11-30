@@ -1,7 +1,5 @@
 import Title from "@/components/title"
-import dynamic from "next/dynamic"
-
-const Round = dynamic(() => import("@/components/round"))
+import Round from "./round"
 
 type Params = Promise<{ round: string }>
 

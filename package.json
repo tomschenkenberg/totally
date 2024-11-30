@@ -12,7 +12,9 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "type-check": "tsc --noEmit --pretty",
+        "check": "pnpm run lint && pnpm run type-check"
     },
     "dependencies": {
         "@radix-ui/react-alert-dialog": "^1.1.2",

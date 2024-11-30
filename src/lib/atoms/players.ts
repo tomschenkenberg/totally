@@ -1,6 +1,7 @@
 import { atom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 import { generate } from "random-words"
+import { updatePlayersAction } from "@/actions/update-players"
 
 // Types
 export type Scores = { [round: number]: number }
@@ -111,14 +112,21 @@ export const syncStorageAtom = atom(null, async (get) => {
     const targetCode = get(targetCodeAtom)
     const players = get(playersAtom)
 
-    // Save to server
-    await callAPI(`/${targetCode}`, "POST", { players })
+    try {
+        await updatePlayersAction(targetCode, players)
+    } catch (error) {
+        console.error("Failed to sync storage:", error)
+    }
 })
 
 export const fetchDataFromServerAtom = atom(null, async (get, set) => {
     const targetCode = get(targetCodeAtom)
     try {
-        const data = await callAPI(`/${targetCode}`)
+        const response = await fetch(`/api/players/${targetCode}`)
+        if (!response.ok) {
+            throw new Error(`Failed to fetch data with status ${response.status}`)
+        }
+        const data = await response.json()
         if (data?.players) {
             set(playersAtom, data.players)
         }

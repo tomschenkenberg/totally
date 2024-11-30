@@ -1,8 +1,6 @@
-"use client"
-
+import ScoresTable from "@/app/scores/scores-table"
 import Title from "@/components/title"
-import ScoresTable from "@/components/scores-table"
-import { ResetScoresButton } from "@/components/reset-scores-button"
+import { ResetScoresButton } from "@/app/scores/reset-scores-button"
 
 export default function ScoresPage() {
     return (

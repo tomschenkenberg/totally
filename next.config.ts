@@ -1,6 +1,7 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+    distDir: "out",
     reactStrictMode: true,
     images: {
         dangerouslyAllowSVG: true,
@@ -15,7 +16,7 @@ const nextConfig: NextConfig = {
         ]
     },
     experimental: {
-        reactCompiler: false
+        reactCompiler: true
     }
 }
 

@@ -3,7 +3,7 @@
 import { Input } from "@/components/ui/input"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useState } from "react"
-import { Button } from "./ui/button"
+import { Button } from "../../components/ui/button"
 import { useAtom, useAtomValue } from "jotai"
 import { syncWithCodeAtom, uniqueAppCodeAtom, fetchDataFromServerAtom } from "@/lib/atoms/players"
 

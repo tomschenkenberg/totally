@@ -1,4 +1,5 @@
-// scoreboard.tsx
+"use client"
+
 import { Player } from "@/lib/atoms/players"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"

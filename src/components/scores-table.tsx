@@ -1,52 +1,30 @@
 "use client"
 
-import { Player, Players, usePlayerStore } from "@/lib/stores/players"
-import * as React from "react"
+import { Players } from "@/lib/atoms/players"
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
+import { useAtomValue } from "jotai"
+import { playersAtom, getNumberOfRoundsAtom } from "@/lib/atoms/players"
 
 type TableDataRow = {
-    round: number | string // Round number or 'Total'
-    [playerId: string]: number | string // Scores for each player, indexed by player ID
+    round: number | string
+    [playerId: string]: number | string
 }
 
-function getData(players: Players): TableDataRow[] {
-    const rounds = usePlayerStore.getState().getNumberOfRounds()
-    const data: TableDataRow[] = Array.from({ length: rounds }, (_, roundIndex) => {
-        const round = roundIndex + 1
-        const roundData: TableDataRow = { round } // Round number
-
-        Object.entries(players).forEach(([id, player]) => {
-            roundData[id] = player.scores[round] || 0 // Access scores by round number
-        })
-
-        return roundData
-    })
-
-    // Add total scores row
-    const totalScoresRow: TableDataRow = { round: "" }
-    Object.entries(players).forEach(([id, player]) => {
-        totalScoresRow[id] = Object.values(player.scores).reduce((sum, score) => sum + score, 0)
-    })
-
-    data.push(totalScoresRow)
-    return data
-}
-
-function getColumns(players: Players): ColumnDef<any>[] {
+function getColumns(players: Players): ColumnDef<TableDataRow>[] {
     const playerColumns = Object.entries(players).map(([id, player]) => ({
         accessorKey: id,
         header: player.name.slice(0, 2)
     }))
 
-    const roundColumn: ColumnDef<any> = {
+    const roundColumn: ColumnDef<TableDataRow> = {
         accessorKey: "round",
         header: "#",
         cell: (info) => info.getValue()
     }
 
-    return [roundColumn, ...playerColumns] // Adding the round column as the first column
+    return [roundColumn, ...playerColumns]
 }
 
 interface DataTableProps<TData, TValue> {
@@ -88,7 +66,6 @@ function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValu
                                 data-state={row.getIsSelected() && "selected"}
                                 className={index === table.getRowModel().rows.length - 1 ? "total-row" : ""}
                                 onClick={() => {
-                                    // do nothing if the row is the total row:
                                     if (index === table.getRowModel().rows.length - 1) return
                                     const roundNumber = parseInt(row.id) + 1
                                     router.push(`/round/${roundNumber}`)
@@ -115,8 +92,26 @@ function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValu
 }
 
 export default function ScoresTable() {
-    const players = usePlayerStore((state) => state.players)
-    const data = getData(players)
+    const players = useAtomValue(playersAtom)
+    const rounds = useAtomValue(getNumberOfRoundsAtom)
+    const data: TableDataRow[] = Array.from({ length: rounds }, (_, roundIndex) => {
+        const round = roundIndex + 1
+        const roundData: TableDataRow = { round }
+
+        Object.entries(players).forEach(([id, player]) => {
+            roundData[id] = player.scores[round] || 0
+        })
+
+        return roundData
+    })
+
+    // Add total scores row
+    const totalScoresRow: TableDataRow = { round: "" }
+    Object.entries(players).forEach(([id, player]) => {
+        totalScoresRow[id] = Object.values(player.scores).reduce((sum, score) => sum + score, 0)
+    })
+
+    data.push(totalScoresRow)
 
     return <DataTable columns={getColumns(players)} data={data} />
 }

@@ -1,33 +1,34 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
-import { useSharingStore } from "@/lib/stores/sharing"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useState } from "react"
 import { Button } from "./ui/button"
-import { usePlayerStore } from "@/lib/stores/players"
+import { useAtom, useAtomValue } from "jotai"
+import { syncWithCodeAtom, uniqueAppCodeAtom, fetchDataFromServerAtom } from "@/lib/atoms/players"
 
 const SyncCodeInput = () => {
-    const currentSyncCode = useSharingStore((state) => state.syncWithCode)
-    const setSyncCode = useSharingStore((state) => state.setSyncWithCode)
-    const ownAppCode = useSharingStore((state) => state.uniqueAppCode)
+    const currentSyncCode = useAtomValue(syncWithCodeAtom)
+    const ownAppCode = useAtomValue(uniqueAppCodeAtom)
+    const [, setSyncCode] = useAtom(syncWithCodeAtom)
+    const [, fetchDataFromServer] = useAtom(fetchDataFromServerAtom)
+
     const [inputValue, setInputValue] = useState(currentSyncCode || "")
-    const syncWithServer = usePlayerStore((state) => state.fetchDataFromServer)
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value
         setInputValue(value)
         if (value === ownAppCode) {
-            setSyncCode("")
+            setSyncCode(null)
             return
         }
         if (value.length === 0 || value.length >= 4) {
-            setSyncCode(value)
+            setSyncCode(value || null)
         }
     }
 
     const handleClear = () => {
-        setSyncCode("")
+        setSyncCode(null)
         setInputValue("")
     }
 
@@ -57,7 +58,7 @@ const SyncCodeInput = () => {
                 </p>
             )}
             {currentSyncCode && inputValue.length >= 4 && (
-                <Button variant="default" className="w-full text-xl" onClick={() => syncWithServer()}>
+                <Button variant="default" className="w-full text-xl" onClick={() => fetchDataFromServer()}>
                     Sync
                 </Button>
             )}

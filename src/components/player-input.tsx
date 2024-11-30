@@ -1,6 +1,8 @@
 import { Input } from "@/components/ui/input"
 import { Cross1Icon } from "@radix-ui/react-icons"
-import { usePlayerStore } from "@/lib/stores/players"
+import { useAtom } from "jotai"
+import { playersAtom } from "@/lib/atoms/players"
+import { useCallback } from "react"
 
 interface PlayerInputProps {
     id: number
@@ -8,12 +10,32 @@ interface PlayerInputProps {
 }
 
 const PlayerInput = ({ id, placeholder }: PlayerInputProps) => {
-    const player = usePlayerStore((state) => state.players[id])
-    const setPlayerName = usePlayerStore((state) => state.setPlayerName)
+    const [players, setPlayers] = useAtom(playersAtom)
+    const playerName = players[id]?.name || ""
 
-    const handleClear = () => {
-        setPlayerName(id, "")
-    }
+    const handleNameChange = useCallback(
+        async (name: string) => {
+            setPlayers((prev) => {
+                if (name.trim() === "") {
+                    const { [id]: _, ...rest } = prev
+                    return rest
+                }
+                return {
+                    ...prev,
+                    [id]: {
+                        ...prev[id],
+                        name,
+                        scores: prev[id]?.scores || {}
+                    }
+                }
+            })
+        },
+        [id, setPlayers]
+    )
+
+    const handleClear = useCallback(() => {
+        handleNameChange("")
+    }, [handleNameChange])
 
     return (
         <div className="relative space-y-2 text-base">
@@ -21,11 +43,11 @@ const PlayerInput = ({ id, placeholder }: PlayerInputProps) => {
                 className="text-xl font-semibold p-3 font-mono"
                 id={`player-input-${id}`}
                 placeholder={placeholder}
-                value={player?.name || ""}
-                onChange={(e) => setPlayerName(id, e.target.value)}
+                value={playerName}
+                onChange={(e) => handleNameChange(e.target.value)}
                 required
             />
-            {player?.name && (
+            {playerName && (
                 <button onClick={handleClear} className="absolute right-0 top-1 mt-2 mr-2">
                     <Cross1Icon />
                 </button>

@@ -1,20 +1,14 @@
 // scoreboard.tsx
-import { Player, usePlayerStore } from "@/lib/stores/players"
-import { Button } from "./ui/button"
-
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger
-} from "@/components/ui/dialog"
+import { Player } from "@/lib/atoms/players"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import PlayerAvatar from "./avatar"
+import PlayerAvatar from "@/components/avatar"
+import { useAtomValue } from "jotai"
+import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"
 
 const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
-    const getTotalScore = usePlayerStore((state) => state.getTotalScore)
+    const getTotalScore = useAtomValue(getTotalScoreAtom)
+
     return (
         <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
@@ -26,15 +20,15 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     )
 }
 
-const Scoreboard = () => {
-    const sortedPlayers = usePlayerStore((state) => state.getPlayersSortedByScore())
-    const numberOfRounds = usePlayerStore((state) => state.getNumberOfRounds)
-    const nextRound = numberOfRounds() + 1
+export default function Scoreboard() {
+    const sortedPlayers = useAtomValue(getPlayersSortedByScoreAtom)
+    const numberOfRounds = useAtomValue(getNumberOfRoundsAtom)
+    const nextRound = numberOfRounds + 1
 
     return (
         <>
             <div className="text-lg text-center">
-                After <span className="font-bold">{numberOfRounds()}</span> rounds
+                After <span className="font-bold">{numberOfRounds}</span> rounds
             </div>
             <div className="flex flex-col space-y-4 pb-6">
                 {sortedPlayers.map(({ id, player }) => (
@@ -49,5 +43,3 @@ const Scoreboard = () => {
         </>
     )
 }
-
-export default Scoreboard

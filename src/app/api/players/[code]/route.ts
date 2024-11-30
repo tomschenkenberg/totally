@@ -1,7 +1,10 @@
 import fs from "fs"
 import path from "path"
 
-export async function POST(request: Request, { params }: { params: { code: string } }) {
+type Params = Promise<{ code: string }>
+
+export async function POST(request: Request, data: { params: Params }) {
+    const params = await data.params
     try {
         const requestData = await request.json()
         const filePath = path.join(process.cwd(), "data", `${params.code}.json`)
@@ -24,7 +27,8 @@ export async function POST(request: Request, { params }: { params: { code: strin
     }
 }
 
-export async function GET(request: Request, { params }: { params: { code: string } }) {
+export async function GET(request: Request, data: { params: Params }) {
+    const params = await data.params
     try {
         const filePath = path.join(process.cwd(), "data", `${params.code}.json`)
 

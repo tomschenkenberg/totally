@@ -1,6 +1,5 @@
 {
+    "packageManager": "pnpm",
     "upgrade": true,
-    "reject": [
-        "eslint"
-    ]
+    "target": "latest"
 }

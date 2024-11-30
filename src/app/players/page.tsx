@@ -1,8 +1,6 @@
 "use client"
 
-import { CardContent, Card } from "@/components/ui/card"
 import Title from "@/components/title"
-import dynamic from "next/dynamic"
 import PlayerInput from "@/components/player-input"
 
 /* const PlayerInput = dynamic(() => import("@/components/player-input"), {
@@ -14,15 +12,11 @@ export default function PlayersPage() {
     return (
         <>
             <Title>Players</Title>
-            <>
-                <>
-                    <div className="mt-6 space-y-4">
-                        {[...Array(numberOfPlayers)].map((_, index) => (
-                            <PlayerInput key={index} id={index} placeholder={`Player ${index + 1} Name`} />
-                        ))}
-                    </div>
-                </>
-            </>
+            <div className="mt-6 space-y-4">
+                {[...Array(numberOfPlayers)].map((_, index) => (
+                    <PlayerInput key={index} id={index} placeholder={`Player ${index + 1} Name`} />
+                ))}
+            </div>
         </>
     )
 }

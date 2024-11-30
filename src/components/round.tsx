@@ -1,28 +1,35 @@
 "use client"
 
-// scoreboard.tsx
-import { Player, usePlayerStore } from "@/lib/stores/players"
+import { useAtom, useAtomValue } from "jotai"
 import { Button } from "./ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import PlayerAvatar from "./avatar"
 import React from "react"
+import {
+    playersAtom,
+    getPlayerScoresAtom,
+    addScoreForRoundAtom,
+    syncStorageAtom,
+    Player
+} from "@/lib/atoms/players"
 
-const InputPlayerScore = ({ id, player, round }: { id: string; player: Player; round: number }) => {
-    const currentScores = usePlayerStore((state) => state.getPlayerScores)
-    const setPlayerScore = usePlayerStore((state) => state.addScoreForRound)
+const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; round: number }) => {
+    const getPlayerScores = useAtomValue(getPlayerScoresAtom)
+    const [, addScoreForRound] = useAtom(addScoreForRoundAtom)
+    const [, syncStorage] = useAtom(syncStorageAtom)
 
-    const [inputValue, setInputValue] = React.useState(currentScores(parseInt(id))[round]?.toString() || "")
+    const [inputValue, setInputValue] = React.useState(getPlayerScores(id)[round]?.toString() || "")
 
-    const handleScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleScoreChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const scoreValue = e.target.value
-        setInputValue(scoreValue) // Set the local state
+        setInputValue(scoreValue)
 
-        // Only update the store if the scoreValue is a valid number
         if (scoreValue !== "") {
             const newScore = parseInt(scoreValue)
             if (!isNaN(newScore)) {
-                setPlayerScore(parseInt(id), round, newScore)
+                await addScoreForRound({ id, round, score: newScore })
+                await syncStorage()
             }
         }
     }
@@ -48,16 +55,16 @@ const InputPlayerScore = ({ id, player, round }: { id: string; player: Player; r
 }
 
 const Round = ({ round }: { round: number }) => {
-    const players = usePlayerStore((state) => state.players)
+    const players = useAtomValue(playersAtom)
 
     return (
         <>
             <div className="flex flex-col space-y-4 pb-6">
                 {Object.entries(players).map(([id, player]) => (
-                    <InputPlayerScore key={id} id={id} player={player} round={round} />
+                    <InputPlayerScore key={id} id={Number(id)} player={player} round={round} />
                 ))}
             </div>
-            <Link href={`/scores`}>
+            <Link href="/scores">
                 <Button variant="default" className="w-full">
                     Done
                 </Button>

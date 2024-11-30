@@ -12,12 +12,12 @@ This application is designed to manage and track scores for multiple players acr
 
 The project is structured into several directories:
 
--   `src/`: This is where the main application code resides.
-    -   `app/`: Contains the main layout and navigation components, as well as specific pages for players, rounds, and scores.
-    -   `components/`: Contains reusable components like avatars, player input, round, scoreboard, scores table, and a theme provider.
-    -   `lib/`: Contains the Zustand store and utility functions.
-    -   `styles/`: Contains global CSS styles.
--   `public/`: Contains static files that are served by the server.
+- `src/`: This is where the main application code resides.
+    - `app/`: Contains the main layout and navigation components, as well as specific pages for players, rounds, and scores.
+    - `components/`: Contains reusable components like avatars, player input, round, scoreboard, scores table, and a theme provider.
+    - `lib/atoms/`: Contains the Jotai atoms and utility functions.
+    - `styles/`: Contains global CSS styles.
+- `public/`: Contains static files that are served by the server.
 
 ## Development
 

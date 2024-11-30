@@ -2,7 +2,7 @@
 
 import React from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Player } from "@/lib/stores/players"
+import { Player } from "@/lib/atoms/players"
 
 type AvatarProps = {
     player: Player

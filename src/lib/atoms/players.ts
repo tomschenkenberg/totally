@@ -86,27 +86,6 @@ export const resetUniqueAppCodeAtom = atom(null, (_, set) => {
     set(uniqueAppCodeAtom, generate({ minLength: 4 }) as string)
 })
 
-// API integration
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function callAPI(endpoint: string, method = "GET", body: any = null) {
-    const options: RequestInit = {
-        method,
-        headers: { "Content-Type": "application/json" }
-    }
-    if (body) {
-        options.body = JSON.stringify(body)
-    }
-    try {
-        const response = await fetch(`/api/players/${endpoint}`, options)
-        if (!response.ok) {
-            throw new Error(`API call failed with status ${response.status}`)
-        }
-        return response.json()
-    } catch (error) {
-        console.error("API call error:", error)
-    }
-}
-
 // Storage sync atom
 export const syncStorageAtom = atom(null, async (get) => {
     const targetCode = get(targetCodeAtom)

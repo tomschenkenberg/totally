@@ -2,7 +2,7 @@
 
 ## Description
 
-This project is a web application built with React and TypeScript, using the Next.js framework. It's set up with npm for package management and uses Tailwind CSS for styling.
+This project is a web application built with React and TypeScript, using the Next.js v15 framework. It's set up with pnpm for package management and uses Tailwind CSS for styling.
 
 ### Functional Description
 
@@ -24,7 +24,7 @@ The project is structured into several directories:
 First, run the development server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

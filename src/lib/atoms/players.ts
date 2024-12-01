@@ -1,6 +1,5 @@
 import { atom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
-import { generate } from "random-words"
 
 // Types
 export type Scores = { [round: number]: number }
@@ -12,7 +11,6 @@ export type Players = { [id: number]: Player }
 
 // Base atoms
 export const playersAtom = atomWithStorage<Players>("players", {})
-export const uniqueAppCodeAtom = atomWithStorage("uniqueAppCode", generate({ minLength: 4 }) as string)
 export const syncWithCodeAtom = atomWithStorage<string | null>("syncWithCode", null)
 
 // Derived atoms
@@ -76,11 +74,4 @@ export const getPlayersSortedByScoreAtom = atom((get) => {
             totalScore: getTotalScore(Number(id))
         }))
         .sort((a, b) => b.totalScore - a.totalScore)
-})
-
-// Sharing atoms
-export const targetCodeAtom = atom((get) => get(syncWithCodeAtom) || get(uniqueAppCodeAtom))
-
-export const resetUniqueAppCodeAtom = atom(null, (_, set) => {
-    set(uniqueAppCodeAtom, generate({ minLength: 4 }) as string)
 })

@@ -1,8 +1,6 @@
 "use client"
 
 import { Player } from "@/lib/atoms/players"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import PlayerAvatar from "@/components/avatar"
 import { useAtomValue } from "jotai"
 import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"

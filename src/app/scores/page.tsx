@@ -1,8 +1,6 @@
 import ScoresTable from "@/app/scores/scores-table"
 import Title from "@/components/title"
 import { ResetScoresButton } from "@/app/scores/reset-scores-button"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { AddNewScoresButton } from "@/components/add-scores-button"
 
 export default function ScoresPage() {

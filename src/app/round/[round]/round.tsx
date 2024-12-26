@@ -36,7 +36,7 @@ const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; r
                 <Input
                     className="text-xl font-semibold font-mono"
                     type="number"
-                    inputMode="numeric"
+                    inputMode="decimal"
                     placeholder="Score"
                     value={inputValue}
                     onChange={handleScoreChange}

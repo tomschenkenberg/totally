@@ -72,7 +72,7 @@ const Round = ({ round }: { round: number }) => {
                     <InputPlayerScore key={id} id={Number(id)} player={player} round={round} />
                 ))}
             </div>
-            <Link href="/scores">
+            <Link href="/scores" prefetch={true}>
                 <Button variant="default" className="w-full">
                     Done
                 </Button>

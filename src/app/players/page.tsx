@@ -1,3 +1,5 @@
+"use client"
+
 import Title from "@/components/title"
 import PlayerInput from "@/app/players/player-input"
 

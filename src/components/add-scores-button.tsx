@@ -10,7 +10,7 @@ export const AddNewScoresButton = () => {
     const nextRound = numberOfRounds + 1
 
     return (
-        <Link href={`/round/${nextRound}`}>
+        <Link href={`/round/${nextRound}`} prefetch={true}>
             <Button variant="default" className="w-full text-xl">
                 Add scores for round {nextRound}
             </Button>

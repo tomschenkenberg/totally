@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "@/styles/globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Providers } from "@/components/providers"
@@ -24,7 +23,7 @@ export const viewport: Viewport = {
 
 function MainMenu() {
     const common =
-        "relative inline-flex items-center bg-white px-3 py-2 text-xl font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-10"
+        "relative inline-flex items-center bg-slate-700 px-3 py-2 text-xl font-semibold text-gray-200 ring-1 ring-inset ring-slate-600 hover:bg-slate-600 focus:z-10"
     const NavButton = ({ label, className, href }: { label: string; className: string; href: string }) => (
         <Link href={href}>
             <button type="button" className={cn(common, className)}>
@@ -46,24 +45,17 @@ function MainMenu() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" className="dark">
             <head />
-            <body className={`min-h-screen flex flex-col ${inter.className} bg-slate-800`}>
+            <body className={`min-h-screen flex flex-col ${inter.className} bg-slate-800 text-gray-200`}>
                 <Providers>
-                    <ThemeProvider
-                        attribute="class"
-                        defaultTheme="system"
-                        enableSystem
-                        disableTransitionOnChange
-                    >
-                        <header className=" bg-slate-800 py-4">
-                            <MainMenu />
-                        </header>
-                        <main className="mx-auto w-full flex-grow bg-slate-700 p-6 space-y-6 sm:max-w-[350px] lg:max-w-[700px] xl:max-w-[1000px] ">
-                            {children}
-                        </main>
-                        <Footer />
-                    </ThemeProvider>
+                    <header className=" bg-slate-800 py-4">
+                        <MainMenu />
+                    </header>
+                    <main className="mx-auto w-full flex-grow bg-slate-700 p-6 space-y-6 sm:max-w-[350px] lg:max-w-[700px] xl:max-w-[1000px] ">
+                        {children}
+                    </main>
+                    <Footer />
                 </Providers>
             </body>
         </html>

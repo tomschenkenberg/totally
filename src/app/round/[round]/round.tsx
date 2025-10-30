@@ -38,7 +38,7 @@ const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; r
         <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
                 <PlayerAvatar player={player} />
-                <span className="text-xl font-bold">{player.name}</span>
+                <span className="text-xl font-bold text-gray-200">{player.name}</span>
             </div>
             <span className="text-2xl font-bold ml-4 flex items-center gap-2">
                 <Input

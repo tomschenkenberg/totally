@@ -3,6 +3,7 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     poweredByHeader: false,
+    reactCompiler: true,
     images: {
         dangerouslyAllowSVG: true,
         domains: ["api.dicebear.com"],
@@ -16,13 +17,7 @@ const nextConfig: NextConfig = {
         ]
     },
     experimental: {
-        reactCompiler: true,
         inlineCss: true
-    },
-    eslint: {
-        // Warning: This allows production builds to successfully complete even if
-        // your project has ESLint errors.
-        ignoreDuringBuilds: true
     },
     // This is required to support PostHog trailing slash API requests
     skipTrailingSlashRedirect: true,

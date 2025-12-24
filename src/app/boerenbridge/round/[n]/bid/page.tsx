@@ -105,45 +105,41 @@ export default function BiddingPage() {
     return (
         <>
             <Title>
-                Ronde {roundNumber} - Bieden
+                Bieden - {cards} kaarten
             </Title>
 
             <div className="space-y-6">
-                {/* Round info */}
+                {/* Dealer info */}
                 <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
                     <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-gray-400">Kaarten:</span>
-                            <span className="ml-2 text-2xl font-bold text-emerald-400">{cards}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Crown className="h-5 w-5 text-amber-500" />
-                            <span className="text-gray-400">Deler:</span>
-                            <span className="ml-1 font-semibold text-gray-200">
+                        <div className="flex items-center gap-3">
+                            <Crown className="h-6 w-6 text-amber-500" />
+                            <span className="text-gray-300 font-medium">Deler:</span>
+                            <span className="ml-1 text-xl font-bold text-white">
                                 {dealerId !== null && players[dealerId]?.name}
                             </span>
                         </div>
-                    </div>
-                    <div className="mt-2 text-sm text-gray-400">
-                        Totaal geboden: <span className="font-bold text-gray-200">{totalBids}</span> / {cards}
+                        <div className="text-base text-gray-300">
+                            Totaal: <span className="font-bold text-white text-lg">{totalBids}</span> / {cards}
+                        </div>
                     </div>
                 </div>
 
                 {/* Current bidder */}
                 {!allBidsComplete && currentBidder && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-center gap-3">
-                            <PlayerAvatar player={currentBidder} />
-                            <span className="text-xl font-bold text-gray-200">{currentBidder.name}</span>
+                        <div className="flex items-center justify-center gap-4">
+                            <PlayerAvatar player={currentBidder} className="w-16 h-16" />
+                            <span className="text-3xl font-bold text-white">{currentBidder.name}</span>
                             {currentBidderIndex === biddingOrder.length - 1 && (
-                                <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded">Laatste</span>
+                                <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold">Laatste</span>
                             )}
                         </div>
 
                         {/* Forbidden bid warning */}
                         {isLastBidder && forbiddenBid !== null && forbiddenBid >= 0 && forbiddenBid <= cards && (
-                            <div className="flex items-center gap-2 justify-center text-amber-400 text-sm">
-                                <AlertTriangle className="h-4 w-4" />
+                            <div className="flex items-center gap-2 justify-center text-amber-400 text-lg font-bold bg-amber-900/30 p-2 rounded">
+                                <AlertTriangle className="h-6 w-6" />
                                 <span>
                                     {forbiddenBid} mag niet (totaal zou {cards} worden)
                                 </span>
@@ -151,7 +147,7 @@ export default function BiddingPage() {
                         )}
 
                         {/* Bid buttons */}
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                             {Array.from({ length: cards + 1 }, (_, i) => i).map((bid) => {
                                 const isForbidden =
                                     isLastBidder && forbiddenBid !== null && bid === forbiddenBid
@@ -162,10 +158,10 @@ export default function BiddingPage() {
                                         disabled={isForbidden}
                                         variant={isForbidden ? "outline" : "default"}
                                         className={cn(
-                                            "text-xl py-6",
+                                            "text-3xl font-bold py-8",
                                             isForbidden
-                                                ? "opacity-30 cursor-not-allowed line-through"
-                                                : "bg-emerald-600 hover:bg-emerald-700"
+                                                ? "opacity-40 cursor-not-allowed line-through border-2 border-red-500 text-red-400"
+                                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
                                         )}
                                     >
                                         {bid}
@@ -176,7 +172,7 @@ export default function BiddingPage() {
 
                         {/* Back button */}
                         {currentBidderIndex > 0 && (
-                            <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400">
+                            <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400 text-lg py-4">
                                 ← Vorige speler
                             </Button>
                         )}
@@ -185,7 +181,7 @@ export default function BiddingPage() {
 
                 {/* Bids summary */}
                 <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-gray-200">Biedingen</h3>
+                    <h3 className="text-xl font-bold text-gray-200">Biedingen</h3>
                     {biddingOrder.map((playerId, index) => {
                         const player = players[playerId]
                         const bid = currentRound.bids[playerId]
@@ -196,19 +192,19 @@ export default function BiddingPage() {
                                 key={playerId}
                                 className={cn(
                                     "flex items-center justify-between p-3 rounded-lg",
-                                    hasBid ? "bg-slate-700" : "bg-slate-800 opacity-50"
+                                    hasBid ? "bg-slate-700 border border-slate-600" : "bg-slate-800 opacity-50"
                                 )}
                             >
-                                <div className="flex items-center gap-2">
-                                    <PlayerAvatar player={player} />
-                                    <span className="font-semibold text-gray-200">{player.name}</span>
+                                <div className="flex items-center gap-3">
+                                    <PlayerAvatar player={player} className="w-10 h-10" />
+                                    <span className="font-bold text-lg text-white">{player.name}</span>
                                     {index === biddingOrder.length - 1 && (
-                                        <span className="text-xs text-amber-400">(laatste)</span>
+                                        <span className="text-sm font-bold text-amber-400 ml-2">(laatste)</span>
                                     )}
                                 </div>
                                 <span
                                     className={cn(
-                                        "text-xl font-bold font-mono",
+                                        "text-2xl font-bold font-mono",
                                         hasBid ? "text-emerald-400" : "text-gray-500"
                                     )}
                                 >
@@ -219,14 +215,22 @@ export default function BiddingPage() {
                     })}
                 </div>
 
-                {/* Continue button */}
+                {/* Continue button - show who plays first */}
                 {allBidsComplete && (
-                    <Button
-                        onClick={handleContinue}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl py-6"
-                    >
-                        Doorgaan naar Spelen →
-                    </Button>
+                    <div className="space-y-4">
+                        <div className="bg-emerald-900/40 border-2 border-emerald-600 rounded-lg p-5 text-center">
+                            <span className="text-gray-200 text-lg block mb-1">Eerste speler: </span>
+                            <span className="text-3xl font-bold text-emerald-400 block">
+                                {players[biddingOrder[0]]?.name}
+                            </span>
+                        </div>
+                        <Button
+                            onClick={handleContinue}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-2xl font-bold py-8"
+                        >
+                            Slagen invoeren →
+                        </Button>
+                    </div>
                 )}
             </div>
         </>

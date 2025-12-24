@@ -120,60 +120,58 @@ export default function TricksPage() {
     const activePlayer = players[activePlayerId]
     const isEditing = editingPlayerId !== null
 
-    const handleContinue = () => {
-        if (!allTricksComplete || !totalTricksValid) return
-
-        if (isLastRound) {
+    // Auto-advance to scoreboard when all tricks are valid
+    useEffect(() => {
+        if (!allTricksComplete || !totalTricksValid || isEditing) return
+        
+        // Small delay for visual feedback
+        const timeout = setTimeout(() => {
+            if (!isLastRound) {
+                advanceToNextRound()
+            }
             router.push("/boerenbridge")
-        } else {
-            advanceToNextRound()
-            router.push(`/boerenbridge/round/${roundNumber + 1}/bid`)
-        }
-    }
+        }, 500)
+        
+        return () => clearTimeout(timeout)
+    }, [allTricksComplete, totalTricksValid, isEditing, isLastRound, advanceToNextRound, router])
 
     return (
         <>
             <Title>
-                Ronde {roundNumber} - Slagen
+                Slagen - {cards} kaarten
             </Title>
 
             <div className="space-y-6">
-                {/* Round info */}
+                {/* Progress info */}
                 <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-gray-400">Kaarten:</span>
-                            <span className="ml-2 text-2xl font-bold text-emerald-400">{cards}</span>
-                        </div>
-                        <div>
-                            <span className="text-gray-400">Slagen ingevoerd:</span>
-                            <span
-                                className={cn(
-                                    "ml-2 text-xl font-bold",
-                                    allTricksComplete && totalTricksValid
-                                        ? "text-emerald-400"
-                                        : allTricksComplete && !totalTricksValid
-                                          ? "text-red-400"
-                                          : "text-gray-200"
-                                )}
-                            >
-                                {totalTricks} / {cards}
-                            </span>
-                        </div>
+                    <div className="flex justify-center items-center">
+                        <span className="text-gray-300 font-medium text-lg">Ingevoerd:</span>
+                        <span
+                            className={cn(
+                                "ml-3 text-3xl font-bold",
+                                allTricksComplete && totalTricksValid
+                                    ? "text-emerald-400"
+                                    : allTricksComplete && !totalTricksValid
+                                      ? "text-red-400"
+                                      : "text-white"
+                            )}
+                        >
+                            {totalTricks} / {cards}
+                        </span>
                     </div>
                 </div>
 
                 {/* Validation warning */}
                 {allTricksComplete && !totalTricksValid && !isEditing && (
-                    <div className="flex flex-col items-center gap-2 text-red-400 bg-red-900/20 p-3 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5" />
-                            <span>
-                                Totaal slagen ({totalTricks}) moet gelijk zijn aan aantal kaarten ({cards})
+                    <div className="flex flex-col items-center gap-3 text-red-300 bg-red-900/40 border border-red-500/50 p-4 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <AlertTriangle className="h-8 w-8 text-red-400" />
+                            <span className="text-lg font-bold">
+                                Totaal slagen ({totalTricks}) moet {cards} zijn
                             </span>
                         </div>
-                        <span className="text-sm text-gray-400">
-                            Klik op een speler hieronder om de slagen aan te passen
+                        <span className="text-base font-medium">
+                            Klik op een speler hieronder om aan te passen
                         </span>
                     </div>
                 )}
@@ -181,29 +179,31 @@ export default function TricksPage() {
                 {/* Current player input - show when entering new OR editing */}
                 {(!allTricksComplete || isEditing) && activePlayer && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-center gap-3">
-                            <PlayerAvatar player={activePlayer} />
-                            <span className="text-xl font-bold text-gray-200">{activePlayer.name}</span>
-                            <span className="text-gray-400">
-                                (geboden: <span className="text-emerald-400 font-bold">{currentRound.bids[activePlayerId]}</span>)
-                            </span>
+                        <div className="flex items-center justify-center gap-4">
+                            <PlayerAvatar player={activePlayer} className="w-16 h-16" />
+                            <div className="flex flex-col items-center">
+                                <span className="text-3xl font-bold text-white">{activePlayer.name}</span>
+                                <span className="text-gray-300 text-lg">
+                                    (geboden: <span className="text-emerald-400 font-bold">{currentRound.bids[activePlayerId]}</span>)
+                                </span>
+                            </div>
                             {isEditing && (
-                                <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded">Aanpassen</span>
+                                <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold self-start">Aanpassen</span>
                             )}
                         </div>
 
                         {/* Tricks buttons */}
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                             {Array.from({ length: cards + 1 }, (_, i) => i).map((tricks) => (
                                 <Button
                                     key={tricks}
                                     onClick={() => handleTricks(tricks)}
                                     variant="default"
                                     className={cn(
-                                        "text-xl py-6",
+                                        "text-3xl font-bold py-8",
                                         isEditing
-                                            ? "bg-amber-600 hover:bg-amber-700"
-                                            : "bg-slate-600 hover:bg-slate-500"
+                                            ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                            : "bg-slate-600 hover:bg-slate-500 text-white"
                                     )}
                                 >
                                     {tricks}
@@ -213,7 +213,7 @@ export default function TricksPage() {
 
                         {/* Back/Cancel button */}
                         {(currentPlayerIndex > 0 || isEditing) && (
-                            <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400">
+                            <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400 text-lg py-4">
                                 {isEditing ? "✕ Annuleren" : "← Vorige speler"}
                             </Button>
                         )}
@@ -222,7 +222,7 @@ export default function TricksPage() {
 
                 {/* Results summary */}
                 <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-gray-200">
+                    <h3 className="text-xl font-bold text-gray-200">
                         Resultaten
                         {allTricksComplete && (
                             <span className="text-sm font-normal text-gray-400 ml-2">
@@ -244,39 +244,39 @@ export default function TricksPage() {
                                 key={playerId}
                                 onClick={() => hasTricks && handleEditPlayer(playerId)}
                                 className={cn(
-                                    "flex items-center justify-between p-3 rounded-lg transition-all",
-                                    hasTricks ? "bg-slate-700 cursor-pointer hover:bg-slate-600" : "bg-slate-800 opacity-50",
-                                    isBeingEdited && "ring-2 ring-amber-500 bg-slate-600"
+                                    "flex items-center justify-between p-4 rounded-lg transition-all",
+                                    hasTricks ? "bg-slate-700 cursor-pointer hover:bg-slate-600 border border-slate-600" : "bg-slate-800 opacity-50",
+                                    isBeingEdited && "ring-4 ring-amber-500 bg-slate-600"
                                 )}
                             >
-                                <div className="flex items-center gap-2">
-                                    <PlayerAvatar player={player} />
-                                    <span className="font-semibold text-gray-200">{player.name}</span>
+                                <div className="flex items-center gap-3">
+                                    <PlayerAvatar player={player} className="w-12 h-12" />
+                                    <span className="font-bold text-xl text-white">{player.name}</span>
                                     {isBeingEdited && (
-                                        <span className="text-xs bg-amber-600 text-white px-2 py-0.5 rounded">bewerken</span>
+                                        <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded font-bold">bewerken</span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="text-sm text-gray-400">
+                                <div className="flex items-center gap-6">
+                                    <div className="text-base text-gray-300">
                                         <span>Bod: </span>
-                                        <span className="font-bold text-emerald-400">{bid}</span>
+                                        <span className="font-bold text-emerald-400 text-xl">{bid}</span>
                                     </div>
-                                    <div className="text-sm text-gray-400">
+                                    <div className="text-base text-gray-300">
                                         <span>Slagen: </span>
-                                        <span className={cn("font-bold", hasTricks ? "text-blue-400" : "text-gray-500")}>
+                                        <span className={cn("font-bold text-xl", hasTricks ? "text-blue-400" : "text-gray-500")}>
                                             {hasTricks ? tricks : "-"}
                                         </span>
                                     </div>
                                     {hasTricks && (
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2 min-w-[60px] justify-end">
                                             {isCorrect ? (
-                                                <Check className="h-5 w-5 text-emerald-400" />
+                                                <Check className="h-6 w-6 text-emerald-400" />
                                             ) : (
-                                                <X className="h-5 w-5 text-red-400" />
+                                                <X className="h-6 w-6 text-red-400" />
                                             )}
                                             <span
                                                 className={cn(
-                                                    "font-bold font-mono text-lg",
+                                                    "font-bold font-mono text-2xl",
                                                     score !== null && score > 0
                                                         ? "text-emerald-400"
                                                         : "text-red-400"
@@ -293,14 +293,11 @@ export default function TricksPage() {
                     })}
                 </div>
 
-                {/* Continue button */}
+                {/* Auto-advancing indicator */}
                 {allTricksComplete && totalTricksValid && (
-                    <Button
-                        onClick={handleContinue}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl py-6"
-                    >
-                        {isLastRound ? "Naar Eindstand →" : "Volgende Ronde →"}
-                    </Button>
+                    <div className="text-center text-emerald-400 py-6">
+                        <span className="animate-pulse text-xl font-bold">Naar scorebord...</span>
+                    </div>
                 )}
             </div>
         </>

@@ -107,26 +107,27 @@ export default function BoerenBridgeScoreboard() {
             </Title>
 
             <div className="space-y-6">
-                {/* Game progress */}
-                <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-gray-400">Ronde:</span>
-                            <span className="ml-2 text-xl font-bold text-emerald-400">
-                                {completedRounds} / {BOEREN_BRIDGE_ROUNDS.length}
-                            </span>
-                        </div>
-                        {!isGameFinished && (
-                            <div className="flex items-center gap-2">
-                                <Crown className="h-5 w-5 text-amber-500" />
-                                <span className="text-gray-400">Deler:</span>
-                                <span className="ml-1 font-semibold text-gray-200">
+                {/* Next action prompt */}
+                {!isGameFinished && (
+                    <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-4">
+                        <div className="text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                                <Crown className="h-6 w-6 text-amber-400" />
+                                <span className="text-xl font-bold text-white">
                                     {players[playerOrder[game.dealerIndex]]?.name}
                                 </span>
+                                <span className="text-gray-200">deelt</span>
+                                <span className="text-3xl font-bold text-emerald-300">
+                                    {BOEREN_BRIDGE_ROUNDS[currentRoundIndex]}
+                                </span>
+                                <span className="text-gray-200">kaarten</span>
                             </div>
-                        )}
+                            <div className="text-base text-gray-200 font-medium">
+                                {players[playerOrder[(game.dealerIndex + 1) % playerOrder.length]]?.name} biedt als eerste
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Standings */}
                 <div className="space-y-2">
@@ -142,24 +143,24 @@ export default function BoerenBridgeScoreboard() {
                             <div className="flex items-center gap-3">
                                 <span
                                     className={cn(
-                                        "w-8 h-8 flex items-center justify-center rounded-full font-bold",
+                                        "w-10 h-10 flex items-center justify-center rounded-full font-bold text-lg",
                                         index === 0
                                             ? "bg-amber-500 text-slate-900"
                                             : index === 1
-                                              ? "bg-gray-400 text-slate-900"
+                                              ? "bg-gray-300 text-slate-900"
                                               : index === 2
                                                 ? "bg-amber-700 text-white"
-                                                : "bg-slate-600 text-gray-400"
+                                                : "bg-slate-600 text-white"
                                     )}
                                 >
                                     {index + 1}
                                 </span>
-                                <PlayerAvatar player={item.player} />
-                                <span className="font-semibold text-gray-200">{item.player.name}</span>
+                                <PlayerAvatar player={item.player} className="w-10 h-10" />
+                                <span className="font-bold text-white text-lg">{item.player.name}</span>
                             </div>
                             <span
                                 className={cn(
-                                    "text-2xl font-bold font-mono",
+                                    "text-3xl font-bold font-mono",
                                     item.total >= 0 ? "text-emerald-400" : "text-red-400"
                                 )}
                             >
@@ -172,15 +173,15 @@ export default function BoerenBridgeScoreboard() {
                 {/* Round history */}
                 {game.rounds.length > 0 && (
                     <div className="space-y-2">
-                        <h3 className="text-lg font-semibold text-gray-200">Rondes</h3>
+                        <h3 className="text-xl font-bold text-gray-200">Rondes</h3>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
+                            <table className="w-full text-base">
                                 <thead>
-                                    <tr className="border-b border-slate-600">
-                                        <th className="text-left p-2 text-gray-400">Ronde</th>
+                                    <tr className="border-b-2 border-slate-600">
+                                        <th className="text-left p-3 text-white font-bold">Ronde</th>
                                         {playerOrder.map((id) => (
-                                            <th key={id} className="text-center p-2 text-gray-400 min-w-[60px]">
-                                                {players[id]?.name?.slice(0, 6)}
+                                            <th key={id} className="text-center p-3 text-white font-bold min-w-[80px]">
+                                                {players[id]?.name?.slice(0, 8)}
                                             </th>
                                         ))}
                                     </tr>
@@ -191,10 +192,10 @@ export default function BoerenBridgeScoreboard() {
                                         if (!isComplete && roundIndex === currentRoundIndex) return null
 
                                         return (
-                                            <tr key={roundIndex} className="border-b border-slate-700">
-                                                <td className="p-2 text-gray-400">
-                                                    <span className="font-mono">{round.cards}</span>
-                                                    <span className="text-xs text-gray-500 ml-1">kaarten</span>
+                                            <tr key={roundIndex} className="border-b border-slate-600">
+                                                <td className="p-3 text-white font-bold">
+                                                    <span className="font-mono text-lg">{round.cards}</span>
+                                                    <span className="text-sm text-gray-300 ml-1 font-normal">kaarten</span>
                                                 </td>
                                                 {playerOrder.map((id) => {
                                                     const bid = round.bids[id]
@@ -205,15 +206,15 @@ export default function BoerenBridgeScoreboard() {
                                                         : null
 
                                                     return (
-                                                        <td key={id} className="text-center p-2">
+                                                        <td key={id} className="text-center p-3">
                                                             {hasResult ? (
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="text-xs text-gray-500">
-                                                                        {bid}→{tricks}
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <span className="text-sm text-gray-300 font-medium">
+                                                                        {bid} → {tricks}
                                                                     </span>
                                                                     <span
                                                                         className={cn(
-                                                                            "font-bold font-mono",
+                                                                            "font-bold font-mono text-xl",
                                                                             score !== null && score > 0
                                                                                 ? "text-emerald-400"
                                                                                 : "text-red-400"
@@ -224,7 +225,7 @@ export default function BoerenBridgeScoreboard() {
                                                                     </span>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-gray-600">-</span>
+                                                                <span className="text-gray-500 font-bold">-</span>
                                                             )}
                                                         </td>
                                                     )
@@ -243,10 +244,10 @@ export default function BoerenBridgeScoreboard() {
                     {!isGameFinished && (
                         <Button
                             onClick={handleContinue}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl py-6"
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl font-bold py-8"
                         >
-                            <Play className="h-5 w-5 mr-2" />
-                            Ronde {currentRoundIndex + 1} Spelen ({BOEREN_BRIDGE_ROUNDS[currentRoundIndex]} kaarten)
+                            <Play className="h-6 w-6 mr-3" />
+                            Biedingen invoeren →
                         </Button>
                     )}
 

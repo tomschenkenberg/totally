@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <header className=" bg-slate-800 py-4">
                         <MainMenu />
                     </header>
-                    <main className="mx-auto w-full flex-grow bg-slate-700 p-6 space-y-6 sm:max-w-[350px] lg:max-w-[700px] xl:max-w-[1000px] ">
+                    <main className="mx-auto w-full flex-grow bg-slate-700 p-2 sm:p-4 md:p-6 space-y-6 sm:max-w-[350px] lg:max-w-[700px] xl:max-w-[1000px] ">
                         {children}
                     </main>
                     <Footer />

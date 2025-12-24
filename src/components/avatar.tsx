@@ -6,11 +6,12 @@ import { Player } from "@/lib/atoms/players"
 
 type AvatarProps = {
     player: Player
+    className?: string
 }
 
-const PlayerAvatar: React.FC<AvatarProps> = ({ player }) => {
+const PlayerAvatar: React.FC<AvatarProps> = ({ player, className }) => {
     return (
-        <Avatar>
+        <Avatar className={className}>
             <AvatarImage
                 src={`https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(player.name)}`}
                 alt={player.name}

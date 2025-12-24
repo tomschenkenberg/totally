@@ -111,10 +111,6 @@ export default function TricksPage() {
         setEditingPlayerId(playerId)
     }
 
-    const handleCancelEdit = () => {
-        setEditingPlayerId(null)
-    }
-
     // Get the player being edited or currently entering
     const activePlayerId = editingPlayerId ?? currentPlayerId
     const activePlayer = players[activePlayerId]

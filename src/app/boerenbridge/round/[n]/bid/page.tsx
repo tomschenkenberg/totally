@@ -141,7 +141,7 @@ export default function BiddingPage() {
                             <div className="flex items-center gap-2 justify-center text-amber-400 text-lg font-bold bg-amber-900/30 p-2 rounded">
                                 <AlertTriangle className="h-6 w-6" />
                                 <span>
-                                    {forbiddenBid} mag niet (totaal zou {cards} worden)
+                                    {forbiddenBid} mag niet
                                 </span>
                             </div>
                         )}

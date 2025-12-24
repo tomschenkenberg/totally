@@ -70,9 +70,6 @@ export default function BoerenBridgeScoreboard() {
         .sort((a, b) => b.total - a.total)
 
     const currentRoundIndex = game.currentRoundIndex
-    const completedRounds = game.rounds.filter(
-        (r) => Object.keys(r.tricks).length === playerOrder.length
-    ).length
 
     const handleContinue = () => {
         if (isGameFinished) return

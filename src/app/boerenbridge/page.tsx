@@ -1,6 +1,6 @@
 "use client"
 
-import { useAtomValue } from "jotai"
+import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
 import {
@@ -8,6 +8,7 @@ import {
     getPlayerBoerenBridgeTotalAtom,
     calculateBoerenBridgeScore,
     isGameFinishedAtom,
+    resetBoerenBridgeGameAtom,
     BOEREN_BRIDGE_ROUNDS
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ import Title from "@/components/title"
 import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
-import { Trophy, Crown, Play } from "lucide-react"
+import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
 
 export default function BoerenBridgeScoreboard() {
     const router = useRouter()
@@ -23,6 +24,7 @@ export default function BoerenBridgeScoreboard() {
     const players = useAtomValue(playersAtom)
     const getPlayerTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
     const isGameFinished = useAtomValue(isGameFinishedAtom)
+    const resetGame = useSetAtom(resetBoerenBridgeGameAtom)
     const [isHydrated, setIsHydrated] = useState(false)
 
     // Wait for hydration
@@ -88,6 +90,36 @@ export default function BoerenBridgeScoreboard() {
             </Title>
 
             <div className="space-y-6">
+                {/* Winner announcement for finished game */}
+                {isGameFinished && sortedPlayers.length > 0 && (
+                    <div className="bg-linear-to-br from-amber-900/50 to-amber-700/30 border-2 border-amber-500 rounded-xl p-6">
+                        <div className="text-center space-y-4">
+                            <div className="flex items-center justify-center gap-3">
+                                <PartyPopper className="h-8 w-8 text-amber-400" />
+                                <span className="text-2xl font-bold text-amber-300">Gefeliciteerd!</span>
+                                <PartyPopper className="h-8 w-8 text-amber-400" />
+                            </div>
+                            <div className="flex items-center justify-center gap-3">
+                                <PlayerAvatar player={sortedPlayers[0].player} className="w-16 h-16 border-4 border-amber-500" />
+                                <div className="text-left">
+                                    <div className="text-3xl font-bold text-white">{sortedPlayers[0].player.name}</div>
+                                    <div className="text-lg text-amber-300">wint met {sortedPlayers[0].total} punten!</div>
+                                </div>
+                            </div>
+                            <Button
+                                onClick={() => {
+                                    resetGame()
+                                    router.push("/boerenbridge/setup")
+                                }}
+                                className="w-full bg-amber-600 hover:bg-amber-700 text-xl font-bold py-6 mt-4"
+                            >
+                                <RotateCcw className="h-6 w-6 mr-3" />
+                                Nieuw spel starten
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Next action prompt */}
                 {!isGameFinished && (
                     <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-4">
@@ -101,13 +133,26 @@ export default function BoerenBridgeScoreboard() {
                                 <span className="text-3xl font-bold text-emerald-300">
                                     {BOEREN_BRIDGE_ROUNDS[currentRoundIndex]}
                                 </span>
-                                <span className="text-gray-200">kaarten</span>
+                                <span className="text-gray-200">
+                                    {BOEREN_BRIDGE_ROUNDS[currentRoundIndex] === 1 ? "kaart" : "kaarten"}
+                                </span>
                             </div>
                             <div className="text-base text-gray-200 font-medium">
                                 {players[playerOrder[(game.dealerIndex + 1) % playerOrder.length]]?.name} biedt als eerste
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Action button - above standings */}
+                {!isGameFinished && (
+                    <Button
+                        onClick={handleContinue}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl font-bold py-8"
+                    >
+                        <Play className="h-6 w-6 mr-3" />
+                        Biedingen invoeren →
+                    </Button>
                 )}
 
                 {/* Standings */}
@@ -176,7 +221,9 @@ export default function BoerenBridgeScoreboard() {
                                             <tr key={roundIndex} className="border-b border-slate-600">
                                                 <td className="p-3 text-white font-bold">
                                                     <span className="font-mono text-lg">{round.cards}</span>
-                                                    <span className="text-sm text-gray-300 ml-1 font-normal">kaarten</span>
+                                                    <span className="text-sm text-gray-300 ml-1 font-normal">
+                                                        {round.cards === 1 ? "kaart" : "kaarten"}
+                                                    </span>
                                                 </td>
                                                 {playerOrder.map((id) => {
                                                     const bid = round.bids[id]
@@ -220,16 +267,6 @@ export default function BoerenBridgeScoreboard() {
                     </div>
                 )}
 
-                {/* Actions */}
-                {!isGameFinished && (
-                    <Button
-                        onClick={handleContinue}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl font-bold py-8"
-                    >
-                        <Play className="h-6 w-6 mr-3" />
-                        Biedingen invoeren →
-                    </Button>
-                )}
             </div>
         </>
     )

@@ -44,20 +44,16 @@ export default function BiddingPage() {
         if (!isHydrated || !game || !currentRound) return
         
         if (roundNumber !== game.currentRoundIndex + 1) {
-            router.push(`/boerenbridge/round/${game.currentRoundIndex + 1}/bid`)
+            router.replace(`/boerenbridge/round/${game.currentRoundIndex + 1}/bid`)
         }
     }, [game, currentRound, roundNumber, router, isHydrated])
 
-    // Redirect to setup if no game (separate effect to handle this case)
+    // Redirect to setup if no game
     useEffect(() => {
         if (!isHydrated) return
-        // Give some time for atoms to hydrate from storage
-        const timeout = setTimeout(() => {
-            if (!game) {
-                router.push("/boerenbridge/setup")
-            }
-        }, 100)
-        return () => clearTimeout(timeout)
+        if (!game) {
+            router.replace("/boerenbridge/setup")
+        }
     }, [isHydrated, game, router])
 
     if (!isHydrated || !game || !currentRound) {

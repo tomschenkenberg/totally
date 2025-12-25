@@ -9,7 +9,8 @@ import {
     getCurrentRoundAtom,
     setTricksAtom,
     calculateBoerenBridgeScore,
-    BOEREN_BRIDGE_ROUNDS
+    BOEREN_BRIDGE_ROUNDS,
+    advanceToNextRoundAtom
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
@@ -28,10 +29,12 @@ export default function TricksPage() {
     const cards = useAtomValue(getCurrentRoundCardsAtom)
     const currentRound = useAtomValue(getCurrentRoundAtom)
     const setTricks = useSetAtom(setTricksAtom)
+    const advanceToNextRound = useSetAtom(advanceToNextRoundAtom)
 
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0)
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
     const [isHydrated, setIsHydrated] = useState(false)
+    const [isAutoAdvancing, setIsAutoAdvancing] = useState(false)
 
     // Wait for hydration
     useEffect(() => {
@@ -58,29 +61,25 @@ export default function TricksPage() {
     }, [roundNumber, isHydrated, game, currentRound])
 
     // Redirect if no game or wrong round (only after hydration and data loaded)
-    // But don't redirect if all tricks are complete (we're about to navigate to scoreboard)
     useEffect(() => {
         if (!isHydrated || !game || !currentRound) return
+        if (autoAdvanceRef.current) return // Don't redirect if auto-advancing
         
         // Don't redirect if tricks are complete - we're navigating to scoreboard
         const tricksComplete = Object.keys(currentRound.tricks).length === game.playerOrder.length
         if (tricksComplete) return
         
         if (roundNumber !== game.currentRoundIndex + 1) {
-            router.push(`/boerenbridge/round/${game.currentRoundIndex + 1}/tricks`)
+            router.replace(`/boerenbridge/round/${game.currentRoundIndex + 1}/tricks`)
         }
     }, [game, currentRound, roundNumber, router, isHydrated])
 
-    // Redirect to setup if no game (separate effect to handle this case)
+    // Redirect to setup if no game
     useEffect(() => {
         if (!isHydrated) return
-        // Give some time for atoms to hydrate from storage
-        const timeout = setTimeout(() => {
-            if (!game) {
-                router.push("/boerenbridge/setup")
-            }
-        }, 100)
-        return () => clearTimeout(timeout)
+        if (!game) {
+            router.replace("/boerenbridge/setup")
+        }
     }, [isHydrated, game, router])
 
     // Calculate values safely (even if game/currentRound is null)
@@ -105,42 +104,23 @@ export default function TricksPage() {
     const activePlayerForEdit = activePlayerId ? players[activePlayerId] : null
     const isEditing = editingPlayerId !== null
 
-    // Auto-advance to scoreboard when all tricks are valid
-    // Use a ref to track if we've already started auto-advancing
+    // Ref to track if we've already started auto-advancing (used in handleTricks)
     const autoAdvanceRef = useRef(false)
-    
-    useEffect(() => {
-        if (!isHydrated || !game || !currentRound) return
-        if (isEditing) return
-        if (autoAdvanceRef.current) return // Already auto-advancing
-        
-        // Calculate completion directly with guaranteed valid game data
-        const tricksCount = Object.keys(currentRound.tricks).length
-        const playerCount = game.playerOrder.length
-        const isComplete = tricksCount === playerCount
-        const tricksTotal = Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0)
-        const roundCards = BOEREN_BRIDGE_ROUNDS[game.currentRoundIndex]
-        const isValid = tricksTotal === roundCards
-        const isLast = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
-        
-        if (!isComplete || !isValid) return
-        
-        // Mark as auto-advancing
-        autoAdvanceRef.current = true
-        
-        // Small delay for visual feedback, then navigate to scoreboard
-        // Don't advance round here - let user see results first
-        setTimeout(() => {
-            router.push("/boerenbridge")
-        }, 500)
-        
-        // No cleanup needed - once we start auto-advancing, we let it complete
-    }, [isHydrated, game, currentRound, isEditing, router])
 
     if (!isHydrated || !game || !currentRound) {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-gray-400">Laden...</div>
+            </div>
+        )
+    }
+
+    // Show loading state when auto-advancing to scoreboard
+    // This prevents visual glitch when round advances but navigation hasn't happened yet
+    if (isAutoAdvancing) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <span className="animate-pulse text-xl font-bold text-emerald-400">Naar scorebord...</span>
             </div>
         )
     }
@@ -198,12 +178,43 @@ export default function TricksPage() {
     const remainingTricks = cards - tricksWithoutCurrentPlayer
 
     const handleTricks = (tricks: number) => {
+        // Calculate if this trick will complete the round
+        let newTotal: number
+        let newCount: number
+        
         if (editingPlayerId !== null) {
-            // Editing existing player
+            newTotal = safeTotalTricks - (currentRound.tricks[editingPlayerId] || 0) + tricks
+            newCount = tricksEntered // editing doesn't change count
+        } else {
+            newTotal = safeTotalTricks + tricks
+            newCount = tricksEntered + 1
+        }
+        
+        const willBeComplete = newCount === safePlayerOrder.length
+        const willBeValid = newTotal === cards
+        const isLast = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
+        
+        // If this completes the round, set loading state BEFORE the state update
+        // This prevents any flash of the completed state
+        if (willBeComplete && willBeValid && !autoAdvanceRef.current) {
+            autoAdvanceRef.current = true
+            setIsAutoAdvancing(true)
+            
+            // Schedule advance + navigation after the state update is processed
+            queueMicrotask(() => {
+                if (!isLast) {
+                    advanceToNextRound()
+                }
+                // Navigate immediately - no delay needed since we already show loading state
+                router.replace("/boerenbridge")
+            })
+        }
+        
+        // Now update the tricks
+        if (editingPlayerId !== null) {
             setTricks({ playerId: editingPlayerId, tricks })
             setEditingPlayerId(null)
         } else if (safeActivePlayerId !== null) {
-            // Entering new player - use the active player ID
             setTricks({ playerId: safeActivePlayerId, tricks })
             // Move to next player without tricks
             const currentIdx = safePlayerOrder.indexOf(safeActivePlayerId)
@@ -402,12 +413,6 @@ export default function TricksPage() {
                     })}
                 </div>
 
-                {/* Auto-advancing indicator */}
-                {safeAllTricksComplete && safeTotalTricksValid && (
-                    <div className="text-center text-emerald-400 py-6">
-                        <span className="animate-pulse text-xl font-bold">Naar scorebord...</span>
-                    </div>
-                )}
             </div>
         </>
     )

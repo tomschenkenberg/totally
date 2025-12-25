@@ -9,7 +9,6 @@ import {
     calculateBoerenBridgeScore,
     resetBoerenBridgeGameAtom,
     isGameFinishedAtom,
-    advanceToNextRoundAtom,
     BOEREN_BRIDGE_ROUNDS
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
@@ -36,7 +35,6 @@ export default function BoerenBridgeScoreboard() {
     const players = useAtomValue(playersAtom)
     const getPlayerTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
     const resetGame = useSetAtom(resetBoerenBridgeGameAtom)
-    const advanceToNextRound = useSetAtom(advanceToNextRoundAtom)
     const isGameFinished = useAtomValue(isGameFinishedAtom)
     const [isHydrated, setIsHydrated] = useState(false)
 
@@ -48,7 +46,7 @@ export default function BoerenBridgeScoreboard() {
     useEffect(() => {
         if (!isHydrated) return
         if (!game) {
-            router.push("/boerenbridge/setup")
+            router.replace("/boerenbridge/setup")
         }
     }, [game, router, isHydrated])
 
@@ -80,12 +78,9 @@ export default function BoerenBridgeScoreboard() {
         const bidsComplete = Object.keys(currentRound?.bids || {}).length === playerOrder.length
         const tricksComplete = Object.keys(currentRound?.tricks || {}).length === playerOrder.length
 
-        // If current round is complete, advance to next round first
-        if (bidsComplete && tricksComplete) {
-            advanceToNextRound()
-            // After advancing, navigate to the new round's bid page (round numbers are 1-based)
-            router.push(`/boerenbridge/round/${currentRoundIndex + 2}/bid`)
-        } else if (!bidsComplete) {
+        // Round should already be advanced from tricks page when complete
+        // Navigate based on current round state
+        if (!bidsComplete) {
             router.push(`/boerenbridge/round/${currentRoundIndex + 1}/bid`)
         } else if (!tricksComplete) {
             router.push(`/boerenbridge/round/${currentRoundIndex + 1}/tricks`)

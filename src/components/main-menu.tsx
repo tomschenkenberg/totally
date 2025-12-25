@@ -54,11 +54,18 @@ const NavButton = ({
 
 export function MainMenu() {
     const gameMode = useAtomValue(gameModeAtom)
+    const setGameMode = useSetAtom(gameModeAtom)
     const resetGame = useSetAtom(resetBoerenBridgeGameAtom)
     const router = useRouter()
 
     const handleNewGame = () => {
         resetGame()
+        router.push("/")
+    }
+
+    const handleSwitchGame = () => {
+        resetGame()
+        setGameMode(null)
         router.push("/")
     }
 
@@ -75,9 +82,15 @@ export function MainMenu() {
                     <NavButton label="Spelers" className="-ml-px" href="/players" />
                     <NavButton 
                         label="Nieuw Spel" 
-                        className="-ml-px rounded-r-md" 
+                        className="-ml-px" 
                         href="/"
                         onClick={handleNewGame}
+                    />
+                    <NavButton 
+                        label="Spel Wisselen" 
+                        className="-ml-px rounded-r-md" 
+                        href="/"
+                        onClick={handleSwitchGame}
                     />
                 </nav>
             </div>
@@ -89,7 +102,13 @@ export function MainMenu() {
             <nav className="isolate inline-flex rounded-md shadow-sm flex-wrap">
                 <NavButton label="Scoreboard" className="rounded-l-md" href="/" />
                 <NavButton label="Scores" className="-ml-px" href="/scores" />
-                <NavButton label="Players" className="-ml-px rounded-r-md" href="/players" />
+                <NavButton label="Players" className="-ml-px" href="/players" />
+                <NavButton 
+                    label="Spel Wisselen" 
+                    className="-ml-px rounded-r-md" 
+                    href="/"
+                    onClick={handleSwitchGame}
+                />
             </nav>
         </div>
     )

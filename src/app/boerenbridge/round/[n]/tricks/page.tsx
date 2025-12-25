@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
 import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Check, X, AlertTriangle } from "lucide-react"
 
 export default function TricksPage() {
@@ -40,9 +40,33 @@ export default function TricksPage() {
         setIsHydrated(true)
     }, [])
 
-    // Redirect if no game or wrong round (only after hydration and data loaded)
+    // Reset player index when round number changes or when entering tricks phase
     useEffect(() => {
         if (!isHydrated || !game || !currentRound) return
+        
+        // Find the first player who hasn't entered tricks yet
+        const playerOrder = game.playerOrder
+        const firstPlayerWithoutTricks = playerOrder.findIndex(
+            (playerId) => currentRound.tricks[playerId] === undefined
+        )
+        
+        if (firstPlayerWithoutTricks !== -1) {
+            setCurrentPlayerIndex(firstPlayerWithoutTricks)
+        } else {
+            // All players have tricks, start from beginning
+            setCurrentPlayerIndex(0)
+        }
+        setEditingPlayerId(null)
+    }, [roundNumber, isHydrated, game, currentRound])
+
+    // Redirect if no game or wrong round (only after hydration and data loaded)
+    // But don't redirect if all tricks are complete (we're about to navigate to scoreboard)
+    useEffect(() => {
+        if (!isHydrated || !game || !currentRound) return
+        
+        // Don't redirect if tricks are complete - we're navigating to scoreboard
+        const tricksComplete = Object.keys(currentRound.tricks).length === game.playerOrder.length
+        if (tricksComplete) return
         
         if (roundNumber !== game.currentRoundIndex + 1) {
             router.push(`/boerenbridge/round/${game.currentRoundIndex + 1}/tricks`)
@@ -61,6 +85,62 @@ export default function TricksPage() {
         return () => clearTimeout(timeout)
     }, [isHydrated, game, router])
 
+    // Calculate values safely (even if game/currentRound is null)
+    const playerOrder = game?.playerOrder ?? []
+    const currentPlayerId = playerOrder[currentPlayerIndex]
+    const currentPlayer = currentPlayerId ? players[currentPlayerId] : null
+
+    // Calculate total tricks so far
+    const totalTricks = currentRound ? Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0) : 0
+
+    // Check if all tricks are recorded
+    const allTricksComplete = currentRound ? Object.keys(currentRound.tricks).length === playerOrder.length : false
+
+    // Validate total tricks equals cards
+    const totalTricksValid = totalTricks === cards
+
+    // Is this the last round?
+    const isLastRound = game ? game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1 : false
+
+    // Get the player being edited or currently entering
+    const activePlayerId = editingPlayerId ?? currentPlayerId
+    const activePlayerForEdit = activePlayerId ? players[activePlayerId] : null
+    const isEditing = editingPlayerId !== null
+
+    // Auto-advance to scoreboard when all tricks are valid
+    // Use a ref to track if we've already started auto-advancing
+    const autoAdvanceRef = useRef(false)
+    
+    useEffect(() => {
+        if (!isHydrated || !game || !currentRound) return
+        if (isEditing) return
+        if (autoAdvanceRef.current) return // Already auto-advancing
+        
+        // Calculate completion directly with guaranteed valid game data
+        const tricksCount = Object.keys(currentRound.tricks).length
+        const playerCount = game.playerOrder.length
+        const isComplete = tricksCount === playerCount
+        const tricksTotal = Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0)
+        const roundCards = BOEREN_BRIDGE_ROUNDS[game.currentRoundIndex]
+        const isValid = tricksTotal === roundCards
+        const isLast = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
+        
+        if (!isComplete || !isValid) return
+        
+        // Mark as auto-advancing
+        autoAdvanceRef.current = true
+        
+        // Small delay for visual feedback, then advance
+        setTimeout(() => {
+            if (!isLast) {
+                advanceToNextRound()
+            }
+            router.push("/boerenbridge")
+        }, 500)
+        
+        // No cleanup needed - once we start auto-advancing, we let it complete
+    }, [isHydrated, game, currentRound, isEditing, advanceToNextRound, router])
+
     if (!isHydrated || !game || !currentRound) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -69,32 +149,58 @@ export default function TricksPage() {
         )
     }
 
-    const playerOrder = game.playerOrder
-    const currentPlayerId = playerOrder[currentPlayerIndex]
-    const currentPlayer = players[currentPlayerId]
-
-    // Calculate total tricks so far
-    const totalTricks = Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0)
-
-    // Check if all tricks are recorded
-    const allTricksComplete = Object.keys(currentRound.tricks).length === playerOrder.length
-
-    // Validate total tricks equals cards
-    const totalTricksValid = totalTricks === cards
-
-    // Is this the last round?
-    const isLastRound = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
+    // Recalculate after early return when we know game/currentRound are available
+    const safePlayerOrder = game.playerOrder
+    // Find first player without tricks
+    const firstPlayerWithoutTricksIndex = safePlayerOrder.findIndex(
+        (playerId) => currentRound.tricks[playerId] === undefined
+    )
+    // Use the first player without tricks, or first player if all have tricks
+    const targetPlayerIndex = firstPlayerWithoutTricksIndex !== -1 ? firstPlayerWithoutTricksIndex : 0
+    // Ensure targetPlayerIndex is within bounds
+    const safeTargetPlayerIndex = targetPlayerIndex >= 0 && targetPlayerIndex < safePlayerOrder.length ? targetPlayerIndex : 0
+    // Use editing player ID if editing, otherwise use target player, with fallback to first player
+    // Always ensure we have a valid player ID
+    let safeActivePlayerId: number | null = null
+    if (editingPlayerId !== null) {
+        safeActivePlayerId = editingPlayerId
+    } else if (safePlayerOrder.length > 0) {
+        // Try target player index first
+        if (safeTargetPlayerIndex >= 0 && safeTargetPlayerIndex < safePlayerOrder.length) {
+            safeActivePlayerId = safePlayerOrder[safeTargetPlayerIndex]
+        }
+        // Fallback to first player if target index didn't work
+        if (safeActivePlayerId === null || safeActivePlayerId === undefined) {
+            safeActivePlayerId = safePlayerOrder[0]
+        }
+    }
+    // Ensure we always have a valid player
+    const activePlayer = safeActivePlayerId && players[safeActivePlayerId] 
+        ? players[safeActivePlayerId] 
+        : (safePlayerOrder.length > 0 && players[safePlayerOrder[0]] ? players[safePlayerOrder[0]] : null)
+    
+    // Recalculate completion status with safe values
+    const tricksEntered = Object.keys(currentRound.tricks).length
+    const safeAllTricksComplete = tricksEntered === safePlayerOrder.length
+    const safeTotalTricks = Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0)
+    const safeTotalTricksValid = safeTotalTricks === cards
+    const needsTricksInput = tricksEntered < safePlayerOrder.length
 
     const handleTricks = (tricks: number) => {
         if (editingPlayerId !== null) {
             // Editing existing player
             setTricks({ playerId: editingPlayerId, tricks })
             setEditingPlayerId(null)
-        } else {
-            // Entering new player
-            setTricks({ playerId: currentPlayerId, tricks })
-            if (currentPlayerIndex < playerOrder.length - 1) {
-                setCurrentPlayerIndex(currentPlayerIndex + 1)
+        } else if (safeActivePlayerId !== null) {
+            // Entering new player - use the active player ID
+            setTricks({ playerId: safeActivePlayerId, tricks })
+            // Move to next player without tricks
+            const currentIdx = safePlayerOrder.indexOf(safeActivePlayerId)
+            const nextPlayerIndex = safePlayerOrder.findIndex(
+                (playerId, idx) => idx > currentIdx && currentRound.tricks[playerId] === undefined
+            )
+            if (nextPlayerIndex !== -1) {
+                setCurrentPlayerIndex(nextPlayerIndex)
             }
         }
     }
@@ -111,26 +217,6 @@ export default function TricksPage() {
         setEditingPlayerId(playerId)
     }
 
-    // Get the player being edited or currently entering
-    const activePlayerId = editingPlayerId ?? currentPlayerId
-    const activePlayer = players[activePlayerId]
-    const isEditing = editingPlayerId !== null
-
-    // Auto-advance to scoreboard when all tricks are valid
-    useEffect(() => {
-        if (!allTricksComplete || !totalTricksValid || isEditing) return
-        
-        // Small delay for visual feedback
-        const timeout = setTimeout(() => {
-            if (!isLastRound) {
-                advanceToNextRound()
-            }
-            router.push("/boerenbridge")
-        }, 500)
-        
-        return () => clearTimeout(timeout)
-    }, [allTricksComplete, totalTricksValid, isEditing, isLastRound, advanceToNextRound, router])
-
     return (
         <>
             <Title>
@@ -145,25 +231,25 @@ export default function TricksPage() {
                         <span
                             className={cn(
                                 "ml-3 text-3xl font-bold",
-                                allTricksComplete && totalTricksValid
+                                safeAllTricksComplete && safeTotalTricksValid
                                     ? "text-emerald-400"
-                                    : allTricksComplete && !totalTricksValid
+                                    : safeAllTricksComplete && !safeTotalTricksValid
                                       ? "text-red-400"
                                       : "text-white"
                             )}
                         >
-                            {totalTricks} / {cards}
+                            {safeTotalTricks} / {cards}
                         </span>
                     </div>
                 </div>
 
                 {/* Validation warning */}
-                {allTricksComplete && !totalTricksValid && !isEditing && (
+                {safeAllTricksComplete && !safeTotalTricksValid && !isEditing && (
                     <div className="flex flex-col items-center gap-3 text-red-300 bg-red-900/40 border border-red-500/50 p-4 rounded-lg">
                         <div className="flex items-center gap-3">
                             <AlertTriangle className="h-8 w-8 text-red-400" />
                             <span className="text-lg font-bold">
-                                Totaal slagen ({totalTricks}) moet {cards} zijn
+                                Totaal slagen ({safeTotalTricks}) moet {cards} zijn
                             </span>
                         </div>
                         <span className="text-base font-medium">
@@ -173,14 +259,16 @@ export default function TricksPage() {
                 )}
 
                 {/* Current player input - show when entering new OR editing */}
-                {(!allTricksComplete || isEditing) && activePlayer && (
+                {needsTricksInput && activePlayer && safeActivePlayerId !== null && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-center gap-4">
                             <PlayerAvatar player={activePlayer} className="w-16 h-16" />
                             <div className="flex flex-col items-center">
-                                <span className="text-3xl font-bold text-white">{activePlayer.name}</span>
+                                <span className="text-3xl font-bold text-white">
+                                    {activePlayer.name}
+                                </span>
                                 <span className="text-gray-300 text-lg">
-                                    (geboden: <span className="text-emerald-400 font-bold">{currentRound.bids[activePlayerId]}</span>)
+                                    (geboden: <span className="text-emerald-400 font-bold">{currentRound.bids[safeActivePlayerId] ?? 0}</span>)
                                 </span>
                             </div>
                             {isEditing && (
@@ -208,7 +296,7 @@ export default function TricksPage() {
                         </div>
 
                         {/* Back/Cancel button */}
-                        {(currentPlayerIndex > 0 || isEditing) && (
+                        {(safeTargetPlayerIndex > 0 || isEditing) && (
                             <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400 text-lg py-4">
                                 {isEditing ? "✕ Annuleren" : "← Vorige speler"}
                             </Button>
@@ -220,13 +308,13 @@ export default function TricksPage() {
                 <div className="space-y-2">
                     <h3 className="text-xl font-bold text-gray-200">
                         Resultaten
-                        {allTricksComplete && (
+                        {safeAllTricksComplete && (
                             <span className="text-sm font-normal text-gray-400 ml-2">
                                 (klik om aan te passen)
                             </span>
                         )}
                     </h3>
-                    {playerOrder.map((playerId) => {
+                    {safePlayerOrder.map((playerId) => {
                         const player = players[playerId]
                         const bid = currentRound.bids[playerId]
                         const tricks = currentRound.tricks[playerId]
@@ -290,7 +378,7 @@ export default function TricksPage() {
                 </div>
 
                 {/* Auto-advancing indicator */}
-                {allTricksComplete && totalTricksValid && (
+                {safeAllTricksComplete && safeTotalTricksValid && (
                     <div className="text-center text-emerald-400 py-6">
                         <span className="animate-pulse text-xl font-bold">Naar scorebord...</span>
                     </div>

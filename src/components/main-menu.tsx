@@ -1,13 +1,21 @@
 "use client"
 
 import Link from "next/link"
-import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
 import { useAtomValue, useSetAtom } from "jotai"
 import { gameModeAtom, resetBoerenBridgeGameAtom } from "@/lib/atoms/game"
-
-const common =
-    "relative inline-flex items-center bg-slate-700 px-3 py-2 text-xl font-semibold text-gray-200 ring-1 ring-inset ring-slate-600 hover:bg-slate-600 focus:z-10 transition-colors"
+import { Menu } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+    Sheet,
+    SheetContent,
+    SheetTrigger,
+    SheetClose,
+    SheetTitle,
+    SheetHeader,
+    SheetDescription
+} from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 
 const NavButton = ({
     label,
@@ -17,7 +25,7 @@ const NavButton = ({
     onClick
 }: {
     label: string
-    className: string
+    className?: string
     href: string
     matchPaths?: string[]
     onClick?: () => void
@@ -28,27 +36,32 @@ const NavButton = ({
         (href === "/" && pathname === "/") ||
         matchPaths?.some((p) => pathname.startsWith(p))
 
+    const variant = isActive ? "secondary" : "ghost"
+
+    const Content = (
+        <Button
+            variant={variant}
+            className={cn("w-full justify-start text-lg font-normal", className)}
+            onClick={onClick}
+        >
+            {label}
+        </Button>
+    )
+
     if (onClick) {
         return (
-            <button
-                type="button"
-                onClick={onClick}
-                className={cn(common, className, isActive && "bg-slate-600 ring-slate-500")}
-            >
-                {label}
-            </button>
+            <SheetClose asChild>
+                {Content}
+            </SheetClose>
         )
     }
 
     return (
-        <Link href={href} prefetch={true}>
-            <button
-                type="button"
-                className={cn(common, className, isActive && "bg-slate-600 ring-slate-500")}
-            >
-                {label}
-            </button>
-        </Link>
+        <SheetClose asChild>
+            <Link href={href} prefetch={true} className="w-full">
+                {Content}
+            </Link>
+        </SheetClose>
     )
 }
 
@@ -69,48 +82,57 @@ export function MainMenu() {
         router.push("/")
     }
 
-    if (gameMode === "boerenbridge") {
-        return (
-            <div className="flex justify-center">
-                <nav className="isolate inline-flex rounded-md shadow-sm flex-wrap">
-                    <NavButton
-                        label="Scorebord"
-                        className="rounded-l-md"
-                        href="/boerenbridge"
-                        matchPaths={["/boerenbridge"]}
-                    />
-                    <NavButton label="Spelers" className="-ml-px" href="/players" />
-                    <NavButton 
-                        label="Nieuw Spel" 
-                        className="-ml-px" 
-                        href="/"
-                        onClick={handleNewGame}
-                    />
-                    <NavButton 
-                        label="Spel Wisselen" 
-                        className="-ml-px rounded-r-md" 
-                        href="/"
-                        onClick={handleSwitchGame}
-                    />
-                </nav>
-            </div>
-        )
-    }
+    const menuContent = gameMode === "boerenbridge" ? (
+        <>
+            <NavButton
+                label="Scorebord"
+                href="/boerenbridge"
+                matchPaths={["/boerenbridge"]}
+            />
+            <NavButton label="Spelers" href="/players" />
+            <NavButton 
+                label="Nieuw Spel" 
+                href="/"
+                onClick={handleNewGame}
+            />
+            <NavButton 
+                label="Spel Wisselen" 
+                href="/"
+                onClick={handleSwitchGame}
+            />
+        </>
+    ) : (
+        <>
+            <NavButton label="Scoreboard" href="/" />
+            <NavButton label="Scores" href="/scores" />
+            <NavButton label="Players" href="/players" />
+            <NavButton 
+                label="Spel Wisselen" 
+                href="/"
+                onClick={handleSwitchGame}
+            />
+        </>
+    )
 
     return (
-        <div className="flex justify-center">
-            <nav className="isolate inline-flex rounded-md shadow-sm flex-wrap">
-                <NavButton label="Scoreboard" className="rounded-l-md" href="/" />
-                <NavButton label="Scores" className="-ml-px" href="/scores" />
-                <NavButton label="Players" className="-ml-px" href="/players" />
-                <NavButton 
-                    label="Spel Wisselen" 
-                    className="-ml-px rounded-r-md" 
-                    href="/"
-                    onClick={handleSwitchGame}
-                />
-            </nav>
+        <div className="flex items-center px-4">
+            <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-gray-200 hover:text-white hover:bg-slate-700">
+                        <Menu className="h-6 w-6" />
+                        <span className="sr-only">Toggle menu</span>
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+                    <SheetHeader>
+                        <SheetTitle className="text-left">Menu</SheetTitle>
+                        <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                    </SheetHeader>
+                    <div className="flex flex-col gap-2 mt-4">
+                        {menuContent}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 }
-

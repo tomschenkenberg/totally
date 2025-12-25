@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <head />
             <body className={`min-h-screen flex flex-col ${inter.className} bg-slate-800 text-gray-200`}>
                 <Providers>
-                    <header className=" bg-slate-800 py-4">
+                    <header className=" bg-slate-800 py-2">
                         <MainMenu />
                     </header>
                     <main className="mx-auto w-full flex-grow bg-slate-700 p-2 sm:p-4 md:p-6 space-y-6 sm:max-w-[350px] lg:max-w-[700px] xl:max-w-[1000px] ">

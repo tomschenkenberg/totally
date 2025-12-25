@@ -259,7 +259,7 @@ export default function TricksPage() {
                 )}
 
                 {/* Current player input - show when entering new OR editing */}
-                {needsTricksInput && activePlayer && safeActivePlayerId !== null && (
+                {(needsTricksInput || isEditing) && activePlayer && safeActivePlayerId !== null && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-center gap-4">
                             <PlayerAvatar player={activePlayer} className="w-16 h-16" />

@@ -1,13 +1,12 @@
 "use client"
 
-import { useAtomValue, useSetAtom } from "jotai"
+import { useAtomValue } from "jotai"
 import { useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
 import {
     boerenBridgeGameAtom,
     getPlayerBoerenBridgeTotalAtom,
     calculateBoerenBridgeScore,
-    resetBoerenBridgeGameAtom,
     isGameFinishedAtom,
     BOEREN_BRIDGE_ROUNDS
 } from "@/lib/atoms/game"
@@ -16,25 +15,13 @@ import Title from "@/components/title"
 import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
-import { Trophy, Crown, RotateCcw, Play } from "lucide-react"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger
-} from "@/components/ui/alert-dialog"
+import { Trophy, Crown, Play } from "lucide-react"
 
 export default function BoerenBridgeScoreboard() {
     const router = useRouter()
     const game = useAtomValue(boerenBridgeGameAtom)
     const players = useAtomValue(playersAtom)
     const getPlayerTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
-    const resetGame = useSetAtom(resetBoerenBridgeGameAtom)
     const isGameFinished = useAtomValue(isGameFinishedAtom)
     const [isHydrated, setIsHydrated] = useState(false)
 
@@ -85,11 +72,6 @@ export default function BoerenBridgeScoreboard() {
         } else if (!tricksComplete) {
             router.push(`/boerenbridge/round/${currentRoundIndex + 1}/tricks`)
         }
-    }
-
-    const handleNewGame = () => {
-        resetGame()
-        router.push("/")
     }
 
     return (
@@ -239,45 +221,15 @@ export default function BoerenBridgeScoreboard() {
                 )}
 
                 {/* Actions */}
-                <div className="space-y-3">
-                    {!isGameFinished && (
-                        <Button
-                            onClick={handleContinue}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl font-bold py-8"
-                        >
-                            <Play className="h-6 w-6 mr-3" />
-                            Biedingen invoeren →
-                        </Button>
-                    )}
-
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Nieuw Spel
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-slate-800 border-slate-600">
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Nieuw spel starten?</AlertDialogTitle>
-                                <AlertDialogDescription className="text-gray-400">
-                                    Het huidige spel wordt gewist. Dit kan niet ongedaan worden gemaakt.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel className="bg-slate-700 border-slate-600 hover:bg-slate-600">
-                                    Annuleren
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={handleNewGame}
-                                    className="bg-red-600 hover:bg-red-700"
-                                >
-                                    Ja, nieuw spel
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
+                {!isGameFinished && (
+                    <Button
+                        onClick={handleContinue}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-xl font-bold py-8"
+                    >
+                        <Play className="h-6 w-6 mr-3" />
+                        Biedingen invoeren →
+                    </Button>
+                )}
             </div>
         </>
     )

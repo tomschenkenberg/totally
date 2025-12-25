@@ -8,7 +8,6 @@ import {
     getCurrentRoundCardsAtom,
     getCurrentRoundAtom,
     setTricksAtom,
-    advanceToNextRoundAtom,
     calculateBoerenBridgeScore,
     BOEREN_BRIDGE_ROUNDS
 } from "@/lib/atoms/game"
@@ -29,7 +28,6 @@ export default function TricksPage() {
     const cards = useAtomValue(getCurrentRoundCardsAtom)
     const currentRound = useAtomValue(getCurrentRoundAtom)
     const setTricks = useSetAtom(setTricksAtom)
-    const advanceToNextRound = useSetAtom(advanceToNextRoundAtom)
 
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0)
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
@@ -130,16 +128,14 @@ export default function TricksPage() {
         // Mark as auto-advancing
         autoAdvanceRef.current = true
         
-        // Small delay for visual feedback, then advance
+        // Small delay for visual feedback, then navigate to scoreboard
+        // Don't advance round here - let user see results first
         setTimeout(() => {
-            if (!isLast) {
-                advanceToNextRound()
-            }
             router.push("/boerenbridge")
         }, 500)
         
         // No cleanup needed - once we start auto-advancing, we let it complete
-    }, [isHydrated, game, currentRound, isEditing, advanceToNextRound, router])
+    }, [isHydrated, game, currentRound, isEditing, router])
 
     if (!isHydrated || !game || !currentRound) {
         return (
@@ -185,6 +181,21 @@ export default function TricksPage() {
     const safeTotalTricks = Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0)
     const safeTotalTricksValid = safeTotalTricks === cards
     const needsTricksInput = tricksEntered < safePlayerOrder.length
+
+    // Calculate how many players still need to enter tricks
+    const playersWithoutTricks = safePlayerOrder.filter(
+        (playerId) => currentRound.tricks[playerId] === undefined
+    )
+    const isLastPlayer = playersWithoutTricks.length === 1 && !isEditing
+    
+    // Calculate remaining tricks for last player
+    // When editing, exclude the edited player's tricks from the total
+    const tricksWithoutCurrentPlayer = isEditing && editingPlayerId !== null
+        ? Object.entries(currentRound.tricks)
+            .filter(([id]) => Number(id) !== editingPlayerId)
+            .reduce((sum, [, t]) => sum + t, 0)
+        : safeTotalTricks
+    const remainingTricks = cards - tricksWithoutCurrentPlayer
 
     const handleTricks = (tricks: number) => {
         if (editingPlayerId !== null) {
@@ -277,23 +288,38 @@ export default function TricksPage() {
                         </div>
 
                         {/* Tricks buttons */}
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                            {Array.from({ length: cards + 1 }, (_, i) => i).map((tricks) => (
+                        {isLastPlayer ? (
+                            <div className="space-y-3">
+                                <div className="text-center text-amber-300 text-lg font-medium">
+                                    Resterende slagen: <span className="font-bold text-2xl">{remainingTricks}</span>
+                                </div>
                                 <Button
-                                    key={tricks}
-                                    onClick={() => handleTricks(tricks)}
+                                    onClick={() => handleTricks(remainingTricks)}
                                     variant="default"
-                                    className={cn(
-                                        "text-3xl font-bold py-8",
-                                        isEditing
-                                            ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                            : "bg-slate-600 hover:bg-slate-500 text-white"
-                                    )}
+                                    className="w-full text-4xl font-bold py-12 bg-emerald-600 hover:bg-emerald-700 text-white"
                                 >
-                                    {tricks}
+                                    {remainingTricks}
                                 </Button>
-                            ))}
-                        </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                                {Array.from({ length: cards + 1 }, (_, i) => i).map((tricks) => (
+                                    <Button
+                                        key={tricks}
+                                        onClick={() => handleTricks(tricks)}
+                                        variant="default"
+                                        className={cn(
+                                            "text-3xl font-bold py-8",
+                                            isEditing
+                                                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                                : "bg-slate-600 hover:bg-slate-500 text-white"
+                                        )}
+                                    >
+                                        {tricks}
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Back/Cancel button */}
                         {(safeTargetPlayerIndex > 0 || isEditing) && (
@@ -328,14 +354,13 @@ export default function TricksPage() {
                                 key={playerId}
                                 onClick={() => hasTricks && handleEditPlayer(playerId)}
                                 className={cn(
-                                    "flex items-center justify-between p-4 rounded-lg transition-all",
+                                    "flex items-center justify-between p-3 rounded-lg transition-all",
                                     hasTricks ? "bg-slate-700 cursor-pointer hover:bg-slate-600 border border-slate-600" : "bg-slate-800 opacity-50",
                                     isBeingEdited && "ring-4 ring-amber-500 bg-slate-600"
                                 )}
                             >
-                                <div className="flex items-center gap-3">
-                                    <PlayerAvatar player={player} className="w-12 h-12" />
-                                    <span className="font-bold text-xl text-white">{player.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-lg text-white">{player.name}</span>
                                     {isBeingEdited && (
                                         <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded font-bold">bewerken</span>
                                     )}

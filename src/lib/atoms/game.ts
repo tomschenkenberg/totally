@@ -134,7 +134,21 @@ export const isTricksCompleteAtom = atom((get) => {
 export const isGameFinishedAtom = atom((get) => {
     const game = get(boerenBridgeGameAtom)
     if (!game) return false
-    return game.currentRoundIndex >= BOEREN_BRIDGE_ROUNDS.length
+    
+    // Game is finished if we're past the last round index
+    if (game.currentRoundIndex >= BOEREN_BRIDGE_ROUNDS.length) return true
+    
+    // Game is also finished if we're on the last round AND all tricks are recorded
+    const isLastRound = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
+    if (isLastRound) {
+        const currentRound = game.rounds[game.currentRoundIndex]
+        if (currentRound) {
+            const allTricksRecorded = Object.keys(currentRound.tricks).length === game.playerOrder.length
+            if (allTricksRecorded) return true
+        }
+    }
+    
+    return false
 })
 
 // Actions

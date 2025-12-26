@@ -32,7 +32,7 @@ export function GameModeSelector() {
                         <div className="p-2 rounded-lg bg-emerald-500/20">
                             <Spade className="h-6 w-6 text-emerald-400" />
                         </div>
-                        <CardTitle className="text-2xl text-gray-100">Boeren Bridge</CardTitle>
+                        <CardTitle className="text-2xl text-gray-100">Boerenbridge</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -40,7 +40,7 @@ export function GameModeSelector() {
                         10 → 1 → 10 kaarten, bieden op slagen, bonus voor juiste voorspelling
                     </CardDescription>
                     <Button variant="default" className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700">
-                        Start Boeren Bridge
+                        Start Boerenbridge
                     </Button>
                 </CardContent>
             </Card>

@@ -85,7 +85,7 @@ export default function BoerenBridgeScoreboard() {
                         Eindstand
                     </span>
                 ) : (
-                    "Boeren Bridge"
+                    "Boerenbridge"
                 )}
             </Title>
 

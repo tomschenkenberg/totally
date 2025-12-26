@@ -39,10 +39,10 @@ export default function BoerenBridgeSetupPage() {
     if (playerList.length < 2) {
         return (
             <>
-                <Title>Boeren Bridge Setup</Title>
+                <Title>Boerenbridge Setup</Title>
                 <div className="text-center space-y-4">
                     <p className="text-gray-400 text-lg">
-                        Je hebt minimaal 2 spelers nodig om Boeren Bridge te spelen.
+                        Je hebt minimaal 2 spelers nodig om Boerenbridge te spelen.
                     </p>
                     <Link href="/players">
                         <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700">
@@ -56,7 +56,7 @@ export default function BoerenBridgeSetupPage() {
 
     return (
         <>
-            <Title>Boeren Bridge Setup</Title>
+            <Title>Boerenbridge Setup</Title>
 
             <div className="space-y-6">
                 <div>

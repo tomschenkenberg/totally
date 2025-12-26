@@ -4,7 +4,7 @@ import { atomWithStorage } from "jotai/utils"
 // Game mode types
 export type GameMode = "generic" | "boerenbridge"
 
-// Boeren Bridge specific types
+// Boerenbridge specific types
 export interface BoerenBridgeRound {
     cards: number
     bids: { [playerId: number]: number }
@@ -153,7 +153,7 @@ export const isGameFinishedAtom = atom((get) => {
 
 // Actions
 
-// Initialize a new Boeren Bridge game
+// Initialize a new Boerenbridge game
 export const initBoerenBridgeGameAtom = atom(
     null,
     (get, set, { playerOrder, dealerIndex }: { playerOrder: number[]; dealerIndex: number }) => {
@@ -225,7 +225,7 @@ export const advanceToNextRoundAtom = atom(null, (get, set) => {
     })
 })
 
-// Reset Boeren Bridge game
+// Reset Boerenbridge game
 export const resetBoerenBridgeGameAtom = atom(null, (get, set) => {
     set(boerenBridgeGameAtom, null)
     set(gameModeAtom, null)

@@ -17,6 +17,7 @@ import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
+import { EditRoundModal } from "@/components/edit-round-modal"
 
 export default function BoerenBridgeScoreboard() {
     const router = useRouter()
@@ -26,6 +27,8 @@ export default function BoerenBridgeScoreboard() {
     const isGameFinished = useAtomValue(isGameFinishedAtom)
     const resetGame = useSetAtom(resetBoerenBridgeGameAtom)
     const [isHydrated, setIsHydrated] = useState(false)
+    const [editingRoundIndex, setEditingRoundIndex] = useState<number | null>(null)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
     // Wait for hydration
     useEffect(() => {
@@ -199,7 +202,12 @@ export default function BoerenBridgeScoreboard() {
                 {/* Round history */}
                 {game.rounds.length > 0 && (
                     <div className="space-y-2">
-                        <h3 className="text-xl font-bold text-gray-200">Rondes</h3>
+                        <h3 className="text-xl font-bold text-gray-200">
+                            Rondes
+                            <span className="text-sm font-normal text-gray-400 ml-2">
+                                (klik om te bewerken)
+                            </span>
+                        </h3>
                         <div className="overflow-x-auto">
                             <table className="w-full text-base">
                                 <thead>
@@ -218,7 +226,14 @@ export default function BoerenBridgeScoreboard() {
                                         if (!isComplete && roundIndex === currentRoundIndex) return null
 
                                         return (
-                                            <tr key={roundIndex} className="border-b border-slate-600">
+                                            <tr
+                                                key={roundIndex}
+                                                onClick={() => {
+                                                    setEditingRoundIndex(roundIndex)
+                                                    setIsEditModalOpen(true)
+                                                }}
+                                                className="border-b border-slate-600 cursor-pointer hover:bg-slate-700/50 transition-colors"
+                                            >
                                                 <td className="p-3 text-white font-bold">
                                                     <span className="font-mono text-lg">{round.cards}</span>
                                                     <span className="text-sm text-gray-300 ml-1 font-normal">
@@ -268,6 +283,18 @@ export default function BoerenBridgeScoreboard() {
                 )}
 
             </div>
+
+            {/* Edit Round Modal */}
+            <EditRoundModal
+                roundIndex={editingRoundIndex}
+                open={isEditModalOpen}
+                onOpenChange={(open) => {
+                    setIsEditModalOpen(open)
+                    if (!open) {
+                        setEditingRoundIndex(null)
+                    }
+                }}
+            />
         </>
     )
 }

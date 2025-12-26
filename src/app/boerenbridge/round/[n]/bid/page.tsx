@@ -9,7 +9,8 @@ import {
     getCurrentDealerIdAtom,
     getBiddingOrderAtom,
     getCurrentRoundAtom,
-    setBidAtom
+    setBidAtom,
+    clearBidAtom
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
@@ -30,14 +31,27 @@ export default function BiddingPage() {
     const biddingOrder = useAtomValue(getBiddingOrderAtom)
     const currentRound = useAtomValue(getCurrentRoundAtom)
     const setBid = useSetAtom(setBidAtom)
+    const clearBid = useSetAtom(clearBidAtom)
 
-    const [currentBidderIndex, setCurrentBidderIndex] = useState(0)
+    const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
     const [isHydrated, setIsHydrated] = useState(false)
 
     // Wait for hydration
     useEffect(() => {
         setIsHydrated(true)
     }, [])
+
+    // Calculate the current bidder index based on who hasn't bid yet
+    // This is derived from the game state, not local state
+    const calculatedBidderIndex = currentRound && biddingOrder.length > 0
+        ? biddingOrder.findIndex((playerId) => {
+            // Check if player has NOT bid (localStorage may serialize keys as strings)
+            const hasBid = playerId in currentRound.bids || String(playerId) in currentRound.bids
+            return !hasBid
+        })
+        : 0
+    // If -1 (all have bid), keep it as -1 to let allBidsComplete handle it
+    const currentBidderIndex = calculatedBidderIndex
 
     // Redirect if no game or wrong round (only after hydration and data loaded)
     useEffect(() => {
@@ -64,25 +78,48 @@ export default function BiddingPage() {
         )
     }
 
-    const currentBidderId = biddingOrder[currentBidderIndex]
-    const currentBidder = players[currentBidderId]
+    // Safely get current bidder (handle -1 case when all have bid)
+    const currentBidderId = currentBidderIndex >= 0 && currentBidderIndex < biddingOrder.length 
+        ? biddingOrder[currentBidderIndex] 
+        : null
+    const currentBidder = currentBidderId !== null ? players[currentBidderId] : null
 
-    // Calculate total bids so far
-    const totalBids = Object.values(currentRound.bids).reduce((sum, bid) => sum + bid, 0)
+    // Calculate total bids so far (excluding the player being edited)
+    const totalBids = editingPlayerId !== null
+        ? Object.entries(currentRound.bids)
+            .filter(([id]) => Number(id) !== editingPlayerId)
+            .reduce((sum, [, bid]) => sum + bid, 0)
+        : Object.values(currentRound.bids).reduce((sum, bid) => sum + bid, 0)
 
-    // Calculate forbidden bid for last bidder
-    const isLastBidder = currentBidderIndex === biddingOrder.length - 1
+    // Get the active player (being edited or currently bidding)
+    const activePlayerId = editingPlayerId ?? currentBidderId
+    const activePlayer = activePlayerId !== null ? players[activePlayerId] : null
+    const isEditing = editingPlayerId !== null
+
+    // Calculate forbidden bid for last bidder (when editing, recalculate based on remaining bids)
+    // Check if the active player (being edited or currently bidding) is the last bidder
+    const activePlayerIndex = editingPlayerId !== null
+        ? biddingOrder.indexOf(editingPlayerId)
+        : currentBidderIndex
+    const isLastBidder = activePlayerIndex === biddingOrder.length - 1
     const forbiddenBid = isLastBidder ? cards - totalBids : null
 
     // Check if all bids are complete
     const allBidsComplete = Object.keys(currentRound.bids).length === biddingOrder.length
 
     const handleBid = (bid: number) => {
-        setBid({ playerId: currentBidderId, bid })
-
-        if (currentBidderIndex < biddingOrder.length - 1) {
-            setCurrentBidderIndex(currentBidderIndex + 1)
+        if (editingPlayerId !== null) {
+            // Editing mode: update the bid and exit edit mode
+            setBid({ playerId: editingPlayerId, bid })
+            setEditingPlayerId(null)
+        } else if (currentBidderId !== null) {
+            // Normal mode: set bid (currentBidderIndex is derived, will auto-advance)
+            setBid({ playerId: currentBidderId, bid })
         }
+    }
+
+    const handleEditPlayer = (playerId: number) => {
+        setEditingPlayerId(playerId)
     }
 
     const handleContinue = () => {
@@ -90,11 +127,13 @@ export default function BiddingPage() {
     }
 
     const handleBack = () => {
-        if (currentBidderIndex > 0) {
-            // Remove the previous bid and go back
+        if (editingPlayerId !== null) {
+            // Cancel editing
+            setEditingPlayerId(null)
+        } else if (currentBidderIndex > 0) {
+            // Go back to previous bidder by clearing their bid
             const prevBidderId = biddingOrder[currentBidderIndex - 1]
-            // We'll just go back visually, the bid stays
-            setCurrentBidderIndex(currentBidderIndex - 1)
+            clearBid({ playerId: prevBidderId })
         }
     }
 
@@ -121,13 +160,16 @@ export default function BiddingPage() {
                     </div>
                 </div>
 
-                {/* Current bidder */}
-                {!allBidsComplete && currentBidder && (
+                {/* Current bidder or editing player */}
+                {(!allBidsComplete || isEditing) && activePlayer && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-center gap-4">
-                            <PlayerAvatar player={currentBidder} className="w-16 h-16" />
-                            <span className="text-3xl font-bold text-white">{currentBidder.name}</span>
-                            {currentBidderIndex === biddingOrder.length - 1 && (
+                            <PlayerAvatar player={activePlayer} className="w-16 h-16" />
+                            <span className="text-3xl font-bold text-white">{activePlayer.name}</span>
+                            {isEditing && (
+                                <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold">Aanpassen</span>
+                            )}
+                            {!isEditing && isLastBidder && (
                                 <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold">Laatste</span>
                             )}
                         </div>
@@ -157,7 +199,9 @@ export default function BiddingPage() {
                                             "text-3xl font-bold py-8",
                                             isForbidden
                                                 ? "opacity-40 cursor-not-allowed line-through border-2 border-red-500 text-red-400"
-                                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                : isEditing
+                                                  ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
                                         )}
                                     >
                                         {bid}
@@ -166,10 +210,10 @@ export default function BiddingPage() {
                             })}
                         </div>
 
-                        {/* Back button */}
-                        {currentBidderIndex > 0 && (
+                        {/* Back/Cancel button */}
+                        {((currentBidderIndex > 0 && currentBidderIndex !== -1) || isEditing) && (
                             <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400 text-lg py-4">
-                                ← Vorige speler
+                                {isEditing ? "✕ Annuleren" : "← Vorige speler"}
                             </Button>
                         )}
                     </div>
@@ -177,24 +221,39 @@ export default function BiddingPage() {
 
                 {/* Bids summary */}
                 <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-gray-200">Biedingen</h3>
+                    <h3 className="text-xl font-bold text-gray-200">
+                        Biedingen
+                        {allBidsComplete && (
+                            <span className="text-sm font-normal text-gray-400 ml-2">
+                                (klik om aan te passen)
+                            </span>
+                        )}
+                    </h3>
                     {biddingOrder.map((playerId, index) => {
                         const player = players[playerId]
                         const bid = currentRound.bids[playerId]
                         const hasBid = bid !== undefined
+                        const isBeingEdited = editingPlayerId === playerId
 
                         return (
                             <div
                                 key={playerId}
+                                onClick={() => hasBid && handleEditPlayer(playerId)}
                                 className={cn(
-                                    "flex items-center justify-between p-3 rounded-lg",
-                                    hasBid ? "bg-slate-700 border border-slate-600" : "bg-slate-800 opacity-50"
+                                    "flex items-center justify-between p-3 rounded-lg transition-all",
+                                    hasBid
+                                        ? "bg-slate-700 cursor-pointer hover:bg-slate-600 border border-slate-600"
+                                        : "bg-slate-800 opacity-50",
+                                    isBeingEdited && "ring-4 ring-amber-500 bg-slate-600"
                                 )}
                             >
                                 <div className="flex items-center gap-3">
                                     <PlayerAvatar player={player} className="w-10 h-10" />
                                     <span className="font-bold text-lg text-white">{player.name}</span>
-                                    {index === biddingOrder.length - 1 && (
+                                    {isBeingEdited && (
+                                        <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded font-bold">bewerken</span>
+                                    )}
+                                    {index === biddingOrder.length - 1 && !isBeingEdited && (
                                         <span className="text-sm font-bold text-amber-400 ml-2">(laatste)</span>
                                     )}
                                 </div>

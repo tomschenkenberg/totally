@@ -199,6 +199,46 @@ export const setTricksAtom = atom(null, (get, set, { playerId, tricks }: { playe
     set(boerenBridgeGameAtom, { ...game, rounds: updatedRounds })
 })
 
+// Clear a player's bid (for editing)
+export const clearBidAtom = atom(null, (get, set, { playerId }: { playerId: number }) => {
+    const game = get(boerenBridgeGameAtom)
+    if (!game) return
+
+    const updatedRounds = [...game.rounds]
+    const currentRound = { ...updatedRounds[game.currentRoundIndex] }
+    const { [playerId]: _, ...remainingBids } = currentRound.bids
+    currentRound.bids = remainingBids
+    updatedRounds[game.currentRoundIndex] = currentRound
+
+    set(boerenBridgeGameAtom, { ...game, rounds: updatedRounds })
+})
+
+// Set a player's bid for a specific round (for editing historical rounds)
+export const setBidForRoundAtom = atom(null, (get, set, { roundIndex, playerId, bid }: { roundIndex: number; playerId: number; bid: number }) => {
+    const game = get(boerenBridgeGameAtom)
+    if (!game || roundIndex < 0 || roundIndex >= game.rounds.length) return
+
+    const updatedRounds = [...game.rounds]
+    const round = { ...updatedRounds[roundIndex] }
+    round.bids = { ...round.bids, [playerId]: bid }
+    updatedRounds[roundIndex] = round
+
+    set(boerenBridgeGameAtom, { ...game, rounds: updatedRounds })
+})
+
+// Set a player's tricks for a specific round (for editing historical rounds)
+export const setTricksForRoundAtom = atom(null, (get, set, { roundIndex, playerId, tricks }: { roundIndex: number; playerId: number; tricks: number }) => {
+    const game = get(boerenBridgeGameAtom)
+    if (!game || roundIndex < 0 || roundIndex >= game.rounds.length) return
+
+    const updatedRounds = [...game.rounds]
+    const round = { ...updatedRounds[roundIndex] }
+    round.tricks = { ...round.tricks, [playerId]: tricks }
+    updatedRounds[roundIndex] = round
+
+    set(boerenBridgeGameAtom, { ...game, rounds: updatedRounds })
+})
+
 // Advance to next round
 export const advanceToNextRoundAtom = atom(null, (get, set) => {
     const game = get(boerenBridgeGameAtom)

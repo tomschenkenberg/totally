@@ -17,7 +17,7 @@ import Title from "@/components/title"
 import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
-import { Crown, AlertTriangle } from "lucide-react"
+import { Crown, AlertTriangle, Check } from "lucide-react"
 
 export default function BiddingPage() {
     const params = useParams()
@@ -35,6 +35,9 @@ export default function BiddingPage() {
 
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
     const [isHydrated, setIsHydrated] = useState(false)
+    const [submittingBid, setSubmittingBid] = useState<{ bid: number; playerId: number } | null>(
+        null
+    )
 
     // Wait for hydration
     useEffect(() => {
@@ -107,7 +110,17 @@ export default function BiddingPage() {
     // Check if all bids are complete
     const allBidsComplete = Object.keys(currentRound.bids).length === biddingOrder.length
 
-    const handleBid = (bid: number) => {
+    const handleBid = async (bid: number) => {
+        if (submittingBid) return
+
+        const playerId = editingPlayerId ?? currentBidderId
+        if (playerId === null) return
+
+        setSubmittingBid({ bid, playerId })
+
+        // Show feedback for a short moment
+        await new Promise((resolve) => setTimeout(resolve, 750))
+
         if (editingPlayerId !== null) {
             // Editing mode: update the bid and exit edit mode
             setBid({ playerId: editingPlayerId, bid })
@@ -116,6 +129,8 @@ export default function BiddingPage() {
             // Normal mode: set bid (currentBidderIndex is derived, will auto-advance)
             setBid({ playerId: currentBidderId, bid })
         }
+
+        setSubmittingBid(null)
     }
 
     const handleEditPlayer = (playerId: number) => {
@@ -189,22 +204,33 @@ export default function BiddingPage() {
                             {Array.from({ length: cards + 1 }, (_, i) => i).map((bid) => {
                                 const isForbidden =
                                     isLastBidder && forbiddenBid !== null && bid === forbiddenBid
+                                const isMyTurnSubmitting = submittingBid?.playerId === activePlayerId
+                                const isSelected = isMyTurnSubmitting && submittingBid?.bid === bid
+                                const isSubmittingOther = isMyTurnSubmitting && !isSelected
+
                                 return (
                                     <Button
                                         key={bid}
                                         onClick={() => handleBid(bid)}
-                                        disabled={isForbidden}
+                                        disabled={isForbidden || isSubmittingOther || isSelected}
                                         variant={isForbidden ? "outline" : "default"}
                                         className={cn(
-                                            "text-3xl font-bold py-8",
+                                            "text-3xl font-bold py-8 transition-all duration-300 transform",
                                             isForbidden
                                                 ? "opacity-40 cursor-not-allowed line-through border-2 border-red-500 text-red-400"
-                                                : isEditing
-                                                  ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                                  : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                : isSelected
+                                                  ? "bg-green-500 hover:bg-green-600 scale-105 ring-4 ring-green-300 text-white"
+                                                  : isEditing
+                                                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                                    : "bg-emerald-600 hover:bg-emerald-700 text-white",
+                                            isSubmittingOther && "opacity-50 scale-95"
                                         )}
                                     >
-                                        {bid}
+                                        {isSelected ? (
+                                            <Check className="w-8 h-8 animate-bounce" />
+                                        ) : (
+                                            bid
+                                        )}
                                     </Button>
                                 )
                             })}

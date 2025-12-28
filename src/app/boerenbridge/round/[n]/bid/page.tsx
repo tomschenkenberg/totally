@@ -116,18 +116,18 @@ export default function BiddingPage() {
         const playerId = editingPlayerId ?? currentBidderId
         if (playerId === null) return
 
+        // Capture whether we're in editing mode NOW, before the delay
+        const wasEditing = editingPlayerId !== null
+
         setSubmittingBid({ bid, playerId })
 
         // Show feedback for a short moment
         await new Promise((resolve) => setTimeout(resolve, 750))
 
-        if (editingPlayerId !== null) {
-            // Editing mode: update the bid and exit edit mode
-            setBid({ playerId: editingPlayerId, bid })
+        // Use the captured playerId and wasEditing, not current state
+        setBid({ playerId, bid })
+        if (wasEditing) {
             setEditingPlayerId(null)
-        } else if (currentBidderId !== null) {
-            // Normal mode: set bid (currentBidderIndex is derived, will auto-advance)
-            setBid({ playerId: currentBidderId, bid })
         }
 
         setSubmittingBid(null)
@@ -297,7 +297,7 @@ export default function BiddingPage() {
                 </div>
 
                 {/* Continue button - show who plays first */}
-                {allBidsComplete && (
+                {allBidsComplete && !isEditing && (
                     <div className="space-y-4">
                         <div className="bg-emerald-900/40 border-2 border-emerald-600 rounded-lg p-5 text-center">
                             <span className="text-gray-200 text-lg block mb-1">Eerste speler: </span>

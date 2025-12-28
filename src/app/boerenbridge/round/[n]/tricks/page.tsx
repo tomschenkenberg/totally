@@ -35,6 +35,10 @@ export default function TricksPage() {
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
     const [isHydrated, setIsHydrated] = useState(false)
     const [isAutoAdvancing, setIsAutoAdvancing] = useState(false)
+    const [submittingTricks, setSubmittingTricks] = useState<{
+        tricks: number
+        playerId: number
+    } | null>(null)
 
     // Wait for hydration
     useEffect(() => {
@@ -177,11 +181,19 @@ export default function TricksPage() {
         : safeTotalTricks
     const remainingTricks = cards - tricksWithoutCurrentPlayer
 
-    const handleTricks = (tricks: number) => {
+    const handleTricks = async (tricks: number) => {
+        if (submittingTricks) return
+        if (safeActivePlayerId === null) return
+
+        setSubmittingTricks({ tricks, playerId: safeActivePlayerId })
+
+        // Show feedback for a short moment
+        await new Promise((resolve) => setTimeout(resolve, 750))
+
         // Calculate if this trick will complete the round
         let newTotal: number
         let newCount: number
-        
+
         if (editingPlayerId !== null) {
             newTotal = safeTotalTricks - (currentRound.tricks[editingPlayerId] || 0) + tricks
             newCount = tricksEntered // editing doesn't change count
@@ -189,17 +201,17 @@ export default function TricksPage() {
             newTotal = safeTotalTricks + tricks
             newCount = tricksEntered + 1
         }
-        
+
         const willBeComplete = newCount === safePlayerOrder.length
         const willBeValid = newTotal === cards
         const isLast = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
-        
+
         // If this completes the round, set loading state BEFORE the state update
         // This prevents any flash of the completed state
         if (willBeComplete && willBeValid && !autoAdvanceRef.current) {
             autoAdvanceRef.current = true
             setIsAutoAdvancing(true)
-            
+
             // Schedule advance + navigation after the state update is processed
             queueMicrotask(() => {
                 if (!isLast) {
@@ -209,7 +221,7 @@ export default function TricksPage() {
                 router.replace("/boerenbridge")
             })
         }
-        
+
         // Now update the tricks
         if (editingPlayerId !== null) {
             setTricks({ playerId: editingPlayerId, tricks })
@@ -219,12 +231,14 @@ export default function TricksPage() {
             // Move to next player without tricks
             const currentIdx = safePlayerOrder.indexOf(safeActivePlayerId)
             const nextPlayerIndex = safePlayerOrder.findIndex(
-                (playerId, idx) => idx > currentIdx && currentRound.tricks[playerId] === undefined
+                (playerId, idx) =>
+                    idx > currentIdx && currentRound.tricks[playerId] === undefined
             )
             if (nextPlayerIndex !== -1) {
                 setCurrentPlayerIndex(nextPlayerIndex)
             }
         }
+        setSubmittingTricks(null)
     }
 
     const handleBack = () => {
@@ -302,33 +316,77 @@ export default function TricksPage() {
                         {isLastPlayer ? (
                             <div className="space-y-3">
                                 <div className="text-center text-amber-300 text-lg font-medium">
-                                    Resterende slagen: <span className="font-bold text-2xl">{remainingTricks}</span>
+                                    Resterende slagen:{" "}
+                                    <span className="font-bold text-2xl">{remainingTricks}</span>
                                 </div>
-                                <Button
-                                    onClick={() => handleTricks(remainingTricks)}
-                                    variant="default"
-                                    className="w-full text-4xl font-bold py-12 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                >
-                                    {remainingTricks}
-                                </Button>
+                                {(() => {
+                                    const isMyTurnSubmitting =
+                                        submittingTricks?.playerId === safeActivePlayerId
+                                    const isSelected =
+                                        isMyTurnSubmitting &&
+                                        submittingTricks?.tricks === remainingTricks
+                                    const isSubmittingOther =
+                                        isMyTurnSubmitting && !isSelected
+
+                                    return (
+                                        <Button
+                                            onClick={() => handleTricks(remainingTricks)}
+                                            variant="default"
+                                            disabled={isSubmittingOther || isSelected}
+                                            className={cn(
+                                                "w-full text-4xl font-bold py-12 transition-all duration-300 transform",
+                                                isSelected
+                                                    ? "bg-green-500 hover:bg-green-600 scale-105 ring-4 ring-green-300 text-white"
+                                                    : "bg-emerald-600 hover:bg-emerald-700 text-white",
+                                                isSubmittingOther && "opacity-50 scale-95"
+                                            )}
+                                        >
+                                            {isSelected ? (
+                                                <Check className="w-12 h-12 animate-bounce" />
+                                            ) : (
+                                                remainingTricks
+                                            )}
+                                        </Button>
+                                    )
+                                })()}
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                {Array.from({ length: cards + 1 }, (_, i) => i).map((tricks) => (
-                                    <Button
-                                        key={tricks}
-                                        onClick={() => handleTricks(tricks)}
-                                        variant="default"
-                                        className={cn(
-                                            "text-3xl font-bold py-8",
-                                            isEditing
-                                                ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                                : "bg-slate-600 hover:bg-slate-500 text-white"
-                                        )}
-                                    >
-                                        {tricks}
-                                    </Button>
-                                ))}
+                                {Array.from({ length: cards + 1 }, (_, i) => i).map(
+                                    (tricks) => {
+                                        const isMyTurnSubmitting =
+                                            submittingTricks?.playerId === safeActivePlayerId
+                                        const isSelected =
+                                            isMyTurnSubmitting &&
+                                            submittingTricks?.tricks === tricks
+                                        const isSubmittingOther =
+                                            isMyTurnSubmitting && !isSelected
+
+                                        return (
+                                            <Button
+                                                key={tricks}
+                                                onClick={() => handleTricks(tricks)}
+                                                variant="default"
+                                                disabled={isSubmittingOther || isSelected}
+                                                className={cn(
+                                                    "text-3xl font-bold py-8 transition-all duration-300 transform",
+                                                    isSelected
+                                                        ? "bg-green-500 hover:bg-green-600 scale-105 ring-4 ring-green-300 text-white"
+                                                        : isEditing
+                                                          ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                                          : "bg-slate-600 hover:bg-slate-500 text-white",
+                                                    isSubmittingOther && "opacity-50 scale-95"
+                                                )}
+                                            >
+                                                {isSelected ? (
+                                                    <Check className="w-8 h-8 animate-bounce" />
+                                                ) : (
+                                                    tricks
+                                                )}
+                                            </Button>
+                                        )
+                                    }
+                                )}
                             </div>
                         )}
 

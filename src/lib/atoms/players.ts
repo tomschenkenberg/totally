@@ -3,8 +3,10 @@ import { atomWithStorage } from "jotai/utils"
 
 // Types
 export type Scores = { [round: number]: number }
+export type Gender = "m" | "v" | "x" // man, vrouw, onbekend
 export interface Player {
     name: string
+    gender: Gender
     scores: Scores
 }
 export type Players = { [id: number]: Player }
@@ -27,7 +29,22 @@ export const setPlayerNameAtom = atom(null, (get, set, { id, name }: { id: numbe
             [id]: {
                 ...players[id],
                 name,
+                gender: players[id]?.gender || "x",
                 scores: players[id]?.scores || {}
+            }
+        })
+    }
+})
+
+export const setPlayerGenderAtom = atom(null, (get, set, { id, gender }: { id: number; gender: Gender }) => {
+    const players = get(playersAtom)
+    const player = players[id]
+    if (player) {
+        set(playersAtom, {
+            ...players,
+            [id]: {
+                ...player,
+                gender
             }
         })
     }

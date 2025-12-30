@@ -42,6 +42,7 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
 
                 return {
                     name: player?.name || "Onbekend",
+                    gender: player?.gender || "x",
                     score: getPlayerTotal(id),
                     roundScores
                 }
@@ -60,6 +61,7 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
             const scores = Object.values(player.scores)
             return {
                 name: player.name,
+                gender: player.gender || "x",
                 score: scores.reduce((a, b) => a + b, 0),
                 roundScores: scores
             }

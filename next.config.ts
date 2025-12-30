@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
         const cspDirectives = [
             "default-src 'self'",
             "base-uri 'none'",
-            "media-src *",
+            "media-src * blob:",
             "object-src 'none'",
             "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.posthog.com https://js.hcaptcha.com https://vercel.live https://va.vercel-scripts.com https://challenges.cloudflare.com",
             "img-src 'self' data: blob: *",

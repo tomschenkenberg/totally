@@ -5,6 +5,7 @@ import PlayerAvatar from "@/components/avatar"
 import { useAtomValue } from "jotai"
 import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"
 import { AddNewScoresButton } from "@/components/add-scores-button"
+import { StandUpdate } from "@/components/stand-update"
 
 const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     const getTotalScore = useAtomValue(getTotalScoreAtom)
@@ -34,7 +35,10 @@ export default function Scoreboard() {
                     <PlayerScore key={id} id={id} player={player} />
                 ))}
             </div>
-            <AddNewScoresButton />
+            <div className="space-y-4">
+                <StandUpdate gameMode="generic" />
+                <AddNewScoresButton />
+            </div>
         </>
     )
 }

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
 import { EditRoundModal } from "@/components/edit-round-modal"
+import { StandUpdate } from "@/components/stand-update"
 
 export default function BoerenBridgeScoreboard() {
     const router = useRouter()
@@ -157,6 +158,9 @@ export default function BoerenBridgeScoreboard() {
                         Biedingen invoeren →
                     </Button>
                 )}
+
+                {/* AI Stand Update */}
+                <StandUpdate gameMode="boerenbridge" />
 
                 {/* Standings */}
                 <div className="space-y-2">

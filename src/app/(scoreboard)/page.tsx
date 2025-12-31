@@ -15,6 +15,8 @@ export default function ScoreboardPage() {
     useEffect(() => {
         if (gameMode === "boerenbridge") {
             router.push("/boerenbridge")
+        } else if (gameMode === "schoppenvrouwen") {
+            router.push("/schoppenvrouwen")
         }
     }, [gameMode, router])
 
@@ -27,7 +29,7 @@ export default function ScoreboardPage() {
         )
     }
 
-    if (gameMode === "boerenbridge") {
+    if (gameMode === "boerenbridge" || gameMode === "schoppenvrouwen") {
         return null // Will redirect
     }
 

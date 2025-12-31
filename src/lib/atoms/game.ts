@@ -2,7 +2,7 @@ import { atom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 
 // Game mode types
-export type GameMode = "generic" | "boerenbridge"
+export type GameMode = "generic" | "boerenbridge" | "schoppenvrouwen"
 
 // Boerenbridge specific types
 export interface BoerenBridgeRound {
@@ -21,10 +21,58 @@ export interface BoerenBridgeGame {
 // Round structure: 10 → 1 → 10 (19 rounds)
 export const BOEREN_BRIDGE_ROUNDS = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
+// Schoppenvrouwen specific types
+export interface SchoppenvrouwenRound {
+    scores: { [playerId: number]: number }
+}
+
+export interface SchoppenvrouwenGame {
+    playerOrder: number[] // Player IDs in seating order
+    dealerIndex: number // Index in playerOrder of current dealer
+    currentRoundIndex: number
+    rounds: SchoppenvrouwenRound[]
+}
+
+// Constants
+export const SCHOPPENVROUWEN_TARGET_SCORE = 1000
+export const SCHOPPENVROUWEN_CARDS_PER_PLAYER = 13
+
 // Base atoms
 export const gameModeAtom = atomWithStorage<GameMode | null>("gameMode", null)
 
 export const boerenBridgeGameAtom = atomWithStorage<BoerenBridgeGame | null>("boerenBridgeGame", null)
+
+export const schoppenvrouwenGameAtom = atomWithStorage<SchoppenvrouwenGame | null>("schoppenvrouwenGame", null)
+
+// Check if any game is currently active (has progress)
+export const hasActiveGameAtom = atom((get) => {
+    const boerenBridgeGame = get(boerenBridgeGameAtom)
+    const schoppenvrouwenGame = get(schoppenvrouwenGameAtom)
+    const gameMode = get(gameModeAtom)
+    
+    // Check Boerenbridge - active if game exists and has any bids/tricks recorded
+    if (boerenBridgeGame) {
+        const hasProgress = boerenBridgeGame.rounds.some(
+            round => Object.keys(round.bids).length > 0 || Object.keys(round.tricks).length > 0
+        )
+        if (hasProgress) return { active: true, mode: "boerenbridge" as GameMode }
+    }
+    
+    // Check Schoppenvrouwen - active if game exists and has any scores recorded
+    if (schoppenvrouwenGame) {
+        const hasProgress = schoppenvrouwenGame.rounds.some(
+            round => Object.keys(round.scores).length > 0
+        )
+        if (hasProgress) return { active: true, mode: "schoppenvrouwen" as GameMode }
+    }
+    
+    // Check generic mode - active if gameMode is generic (scores stored in players atom)
+    if (gameMode === "generic") {
+        return { active: true, mode: "generic" as GameMode }
+    }
+    
+    return { active: false, mode: null }
+})
 
 // Derived atoms
 
@@ -283,5 +331,195 @@ export const setDealerIndexAtom = atom(null, (get, set, dealerIndex: number) => 
     const game = get(boerenBridgeGameAtom)
     if (!game) return
     set(boerenBridgeGameAtom, { ...game, dealerIndex })
+})
+
+// ============================================
+// SCHOPPENVROUWEN ATOMS
+// ============================================
+
+// Get current dealer player ID for Schoppenvrouwen
+export const getSchoppenvrouwenDealerIdAtom = atom((get) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game || game.playerOrder.length === 0) return null
+    return game.playerOrder[game.dealerIndex]
+})
+
+// Get current round data for Schoppenvrouwen
+export const getSchoppenvrouwenCurrentRoundAtom = atom((get) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game) return null
+    return game.rounds[game.currentRoundIndex] || null
+})
+
+// Get player's total score in Schoppenvrouwen
+export const getSchoppenvrouwenPlayerTotalAtom = atom((get) => (playerId: number) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game) return 0
+
+    return game.rounds.reduce((total, round) => {
+        const score = round.scores[playerId]
+        if (score !== undefined) {
+            return total + score
+        }
+        return total
+    }, 0)
+})
+
+// Check if current round scores are complete
+export const isSchoppenvrouwenRoundCompleteAtom = atom((get) => {
+    const game = get(schoppenvrouwenGameAtom)
+    const round = get(getSchoppenvrouwenCurrentRoundAtom)
+    if (!game || !round) return false
+    return Object.keys(round.scores).length === game.playerOrder.length
+})
+
+// Check if Schoppenvrouwen game is finished (someone reached 1000+)
+export const isSchoppenvrouwenFinishedAtom = atom((get) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game) return false
+
+    const getTotal = get(getSchoppenvrouwenPlayerTotalAtom)
+    
+    // Check if any player has reached the target score
+    return game.playerOrder.some((id) => getTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE)
+})
+
+// Get Schoppenvrouwen winner(s) - when multiple players hit 1000+, the last finisher wins
+export const getSchoppenvrouwenWinnerAtom = atom((get) => {
+    const game = get(schoppenvrouwenGameAtom)
+    const isFinished = get(isSchoppenvrouwenFinishedAtom)
+    if (!game || !isFinished) return null
+
+    const getTotal = get(getSchoppenvrouwenPlayerTotalAtom)
+    
+    // Get all players who reached 1000+
+    const winners = game.playerOrder.filter((id) => getTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE)
+    
+    if (winners.length === 0) return null
+    if (winners.length === 1) return winners[0]
+    
+    // Multiple winners - the "last finisher" wins
+    // This is the player who finished the last round (was last to play/be scored)
+    // In this game, we interpret "last finisher" as the player closest to the dealer
+    // going backwards in player order (since dealer deals, others play after)
+    const lastRound = game.rounds[game.rounds.length - 1]
+    if (!lastRound) return winners[0]
+    
+    // The player order determines who "finishes last" - it's whoever is 
+    // positioned just before the next dealer (i.e., dealer position itself)
+    const dealerIndex = game.dealerIndex
+    
+    // Find which winner is closest to dealer position going backwards
+    let bestWinner = winners[0]
+    let bestDistance = Infinity
+    
+    for (const winnerId of winners) {
+        const winnerIndex = game.playerOrder.indexOf(winnerId)
+        // Distance from dealer going backwards (dealer is "last" in round)
+        const distance = (dealerIndex - winnerIndex + game.playerOrder.length) % game.playerOrder.length
+        if (distance < bestDistance) {
+            bestDistance = distance
+            bestWinner = winnerId
+        }
+    }
+    
+    return bestWinner
+})
+
+// Initialize a new Schoppenvrouwen game
+export const initSchoppenvrouwenGameAtom = atom(
+    null,
+    (get, set, { playerOrder, dealerIndex }: { playerOrder: number[]; dealerIndex: number }) => {
+        const initialRound: SchoppenvrouwenRound = {
+            scores: {}
+        }
+
+        set(schoppenvrouwenGameAtom, {
+            playerOrder,
+            dealerIndex,
+            currentRoundIndex: 0,
+            rounds: [initialRound]
+        })
+        set(gameModeAtom, "schoppenvrouwen")
+    }
+)
+
+// Set a player's score for current round in Schoppenvrouwen
+export const setSchoppenvrouwenScoreAtom = atom(
+    null,
+    (get, set, { playerId, score }: { playerId: number; score: number }) => {
+        const game = get(schoppenvrouwenGameAtom)
+        if (!game) return
+
+        const updatedRounds = [...game.rounds]
+        const currentRound = { ...updatedRounds[game.currentRoundIndex] }
+        currentRound.scores = { ...currentRound.scores, [playerId]: score }
+        updatedRounds[game.currentRoundIndex] = currentRound
+
+        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds })
+    }
+)
+
+// Set a player's score for a specific round in Schoppenvrouwen (for editing)
+export const setSchoppenvrouwenScoreForRoundAtom = atom(
+    null,
+    (get, set, { roundIndex, playerId, score }: { roundIndex: number; playerId: number; score: number }) => {
+        const game = get(schoppenvrouwenGameAtom)
+        if (!game || roundIndex < 0 || roundIndex >= game.rounds.length) return
+
+        const updatedRounds = [...game.rounds]
+        const round = { ...updatedRounds[roundIndex] }
+        round.scores = { ...round.scores, [playerId]: score }
+        updatedRounds[roundIndex] = round
+
+        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds })
+    }
+)
+
+// Advance to next round in Schoppenvrouwen
+export const advanceSchoppenvrouwenRoundAtom = atom(null, (get, set) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game) return
+
+    // Don't advance if game is finished
+    const isFinished = get(isSchoppenvrouwenFinishedAtom)
+    if (isFinished) return
+
+    const nextRoundIndex = game.currentRoundIndex + 1
+
+    // Rotate dealer to next player
+    const nextDealerIndex = (game.dealerIndex + 1) % game.playerOrder.length
+
+    // Create new round
+    const newRound: SchoppenvrouwenRound = {
+        scores: {}
+    }
+
+    set(schoppenvrouwenGameAtom, {
+        ...game,
+        dealerIndex: nextDealerIndex,
+        currentRoundIndex: nextRoundIndex,
+        rounds: [...game.rounds, newRound]
+    })
+})
+
+// Reset Schoppenvrouwen game
+export const resetSchoppenvrouwenGameAtom = atom(null, (get, set) => {
+    set(schoppenvrouwenGameAtom, null)
+    set(gameModeAtom, null)
+})
+
+// Update player order for Schoppenvrouwen
+export const setSchoppenvrouwenPlayerOrderAtom = atom(null, (get, set, playerOrder: number[]) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game) return
+    set(schoppenvrouwenGameAtom, { ...game, playerOrder })
+})
+
+// Update dealer index for Schoppenvrouwen
+export const setSchoppenvrouwenDealerIndexAtom = atom(null, (get, set, dealerIndex: number) => {
+    const game = get(schoppenvrouwenGameAtom)
+    if (!game) return
+    set(schoppenvrouwenGameAtom, { ...game, dealerIndex })
 })
 

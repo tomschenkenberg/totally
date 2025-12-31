@@ -16,14 +16,15 @@ interface PlayerStanding {
 interface GameState {
     players: PlayerStanding[]
     currentRound: number
-    totalRounds: number
-    gameMode: "generic" | "boerenbridge"
+    totalRounds?: number
+    targetScore?: number
+    gameMode: "generic" | "boerenbridge" | "schoppenvrouwen"
 }
 
 export async function generateStandUpdate(gameState: GameState) {
     const stream = createStreamableValue("")
 
-    const { players, currentRound, totalRounds, gameMode } = gameState
+    const { players, currentRound, totalRounds, targetScore, gameMode } = gameState
 
     // Sort players by score descending
     const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
@@ -83,15 +84,37 @@ export async function generateStandUpdate(gameState: GameState) {
         return { name: p.name, positive, negative, total: p.roundScores.length }
     })
 
-    const roundsRemaining = totalRounds - currentRound
-    const gameProgress = currentRound / totalRounds
-    const gamePhase = gameProgress < 0.33 ? "begin" : gameProgress < 0.66 ? "midden" : gameProgress < 0.9 ? "eindfase" : "finale"
+    // Calculate game phase and progress based on game mode
+    let gameProgress: number
+    let gamePhase: string
+    let roundsRemaining: number | undefined
     
-    const gameContext =
-        gameMode === "boerenbridge"
-            ? `Dit is een spel Boerenbridge (een Nederlands kaartspel waar je moet inschatten hoeveel slagen je haalt). Positieve scores = goed voorspeld, negatieve scores = mis voorspeld.
+    if (gameMode === "schoppenvrouwen" && targetScore) {
+        // For schoppenvrouwen, progress is based on how close the leader is to target
+        gameProgress = leader.score / targetScore
+        const pointsToWin = targetScore - leader.score
+        gamePhase = gameProgress < 0.33 ? "begin" : gameProgress < 0.66 ? "midden" : gameProgress < 0.85 ? "eindfase" : "finale"
+        roundsRemaining = undefined // Unknown in target-based games
+    } else if (totalRounds) {
+        roundsRemaining = totalRounds - currentRound
+        gameProgress = currentRound / totalRounds
+        gamePhase = gameProgress < 0.33 ? "begin" : gameProgress < 0.66 ? "midden" : gameProgress < 0.9 ? "eindfase" : "finale"
+    } else {
+        gameProgress = 0.5
+        gamePhase = "midden"
+    }
+    
+    let gameContext: string
+    if (gameMode === "boerenbridge" && totalRounds) {
+        gameContext = `Dit is een spel Boerenbridge (een Nederlands kaartspel waar je moet inschatten hoeveel slagen je haalt). Positieve scores = goed voorspeld, negatieve scores = mis voorspeld.
 Dit was ronde ${currentRound} van in totaal ${totalRounds} rondes. Er ${roundsRemaining === 1 ? "moet nog 1 ronde" : `moeten nog ${roundsRemaining} rondes`} gespeeld worden. We zitten in de ${gamePhase} van het spel.`
-            : "Dit is een scoretelling spel."
+    } else if (gameMode === "schoppenvrouwen" && targetScore) {
+        const pointsToWin = targetScore - leader.score
+        gameContext = `Dit is een spel Schoppenvrouwen (ook wel Duizenden genoemd). Dit is een kaartspel waar je punten scoort en de eerste die ${targetScore} punten haalt wint. Als meerdere spelers tegelijk ${targetScore}+ halen, wint degene die als laatste de ronde afsloot.
+Dit was ronde ${currentRound}. De leider ${leader.name} heeft nog ${pointsToWin} punten nodig om te winnen. We zitten in de ${gamePhase} van het spel.`
+    } else {
+        gameContext = "Dit is een scoretelling spel."
+    }
 
     const standingsText = sortedPlayers
         .map((p, i) => `${i + 1}. ${p.name}: ${p.score} punten`)
@@ -117,7 +140,9 @@ Dit was ronde ${currentRound} van in totaal ${totalRounds} rondes. Er ${roundsRe
         })
         .join("\n")
 
-    const isGameFinished = currentRound >= totalRounds
+    const isGameFinished = gameMode === "schoppenvrouwen" && targetScore
+        ? leader.score >= targetScore
+        : totalRounds ? currentRound >= totalRounds : false
     
     // Find who led at different points
     const leadChanges: string[] = []
@@ -136,18 +161,37 @@ Dit was ronde ${currentRound} van in totaal ${totalRounds} rondes. Er ${roundsRe
         }
     }
 
+    const getGameTypeDescription = () => {
+        if (gameMode === "boerenbridge") {
+            return "Dit was een spel Boerenbridge (een Nederlands kaartspel waar je moet inschatten hoeveel slagen je haalt). Positieve scores = goed voorspeld, negatieve scores = mis voorspeld."
+        } else if (gameMode === "schoppenvrouwen" && targetScore) {
+            return `Dit was een spel Schoppenvrouwen (ook wel Duizenden). Het doel was om als eerste ${targetScore} punten te halen.`
+        }
+        return "Dit is een scoretelling spel."
+    }
+
+    const roundsDescription = totalRounds 
+        ? `NA ${totalRounds} RONDES` 
+        : `NA ${currentRound} RONDES`
+
+    const standDescription = totalRounds
+        ? `(na ronde ${currentRound} van ${totalRounds})`
+        : targetScore
+            ? `(na ronde ${currentRound}, doel: ${targetScore} punten)`
+            : `(na ronde ${currentRound})`
+
     const prompt = isGameFinished
         ? `Je bent een enthousiaste en grappige Nederlandse spelcommentator. Het spel is AFGELOPEN! Geef een epische samenvatting van het hele spel en roep de winnaar uit.
 
-${gameMode === "boerenbridge" ? "Dit was een spel Boerenbridge (een Nederlands kaartspel waar je moet inschatten hoeveel slagen je haalt). Positieve scores = goed voorspeld, negatieve scores = mis voorspeld." : "Dit is een scoretelling spel."}
+${getGameTypeDescription()}
 
 GESLACHT SPELERS (gebruik de juiste voornaamwoorden!):
 ${playersGenderText}
 
-🏆 EINDSTAND NA ${totalRounds} RONDES:
+🏆 EINDSTAND ${roundsDescription}:
 ${standingsText}
 
-WINNAAR: ${leader.name} met ${leader.score} punten!
+WINNAAR: ${leader.name} met ${leader.score} punten!${targetScore ? ` (doel was ${targetScore})` : ""}
 ${sortedPlayers.length > 1 ? `Nummer 2: ${sortedPlayers[1].name} met ${sortedPlayers[1].score} punten (${leader.score - sortedPlayers[1].score} punten achterstand)` : ""}
 ${sortedPlayers.length > 2 ? `Hekkensluiter: ${lastPlace.name} met ${lastPlace.score} punten` : ""}
 
@@ -162,7 +206,7 @@ STATISTIEKEN VAN HET HELE SPEL:
 - Slechtste ronde: ${worstRound.name} in ronde ${worstRound.round} met ${worstRound.score} punten
 - Totaal punten verschil 1e en laatste: ${leader.score - lastPlace.score} punten
 
-CONSISTENTIE OVER ALLE ${totalRounds} RONDES:
+CONSISTENTIE OVER ALLE ${currentRound} RONDES:
 ${consistencyText}
 
 INSTRUCTIES:
@@ -183,7 +227,7 @@ ${gameContext}
 GESLACHT SPELERS (gebruik de juiste voornaamwoorden!):
 ${playersGenderText}
 
-HUIDIGE STAND (na ronde ${currentRound} van ${totalRounds}):
+HUIDIGE STAND ${standDescription}:
 ${standingsText}
 
 VOLLEDIGE RONDE HISTORIE:
@@ -193,8 +237,9 @@ STATISTIEKEN:
 - Beste ronde ooit: ${bestRound.name} in ronde ${bestRound.round} met ${bestRound.score > 0 ? "+" : ""}${bestRound.score} punten
 - Slechtste ronde ooit: ${worstRound.name} in ronde ${worstRound.round} met ${worstRound.score} punten
 - Verschil tussen 1 en laatste: ${leader.score - lastPlace.score} punten
+${targetScore ? `- Leider heeft nog ${targetScore - leader.score} punten nodig om te winnen` : ""}
 
-CONSISTENTIE (voorspellingen goed/mis):
+CONSISTENTIE (rondes positief/negatief):
 ${consistencyText}
 
 RECENTE VORM (laatste ${recentRounds} rondes):
@@ -208,7 +253,7 @@ INSTRUCTIES:
 - Verwijs naar specifieke rondes of momenten als dat interessant is
 - Als iemand een comeback maakt of juist wegzakt, benoem dat!
 - Als het spannend is, benoem dat!
-- Vermeld waar we zijn in het spel (bijv. "halverwege", "nog 3 rondes te gaan", "de finale nadert")
+${targetScore ? `- Vermeld hoe dichtbij spelers zijn bij de ${targetScore} punten (bijv. "nog 200 punten te gaan")` : `- Vermeld waar we zijn in het spel (bijv. "halverwege", "nog 3 rondes te gaan", "de finale nadert")`}
 - BELANGRIJK: Gebruik de juiste voornaamwoorden per speler (hij/zij/die, hem/haar, zijn/haar/diens)
 - Gebruik informele, enthousiaste taal (alsof je vrienden aan het commentaar geeft)
 - Geen emojis gebruiken

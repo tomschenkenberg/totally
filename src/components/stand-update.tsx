@@ -10,6 +10,9 @@ import {
     getPlayerBoerenBridgeTotalAtom,
     calculateBoerenBridgeScore,
     BOEREN_BRIDGE_ROUNDS,
+    schoppenvrouwenGameAtom,
+    getSchoppenvrouwenPlayerTotalAtom,
+    SCHOPPENVROUWEN_TARGET_SCORE,
     GameMode
 } from "@/lib/atoms/game"
 import { generateStandUpdate } from "@/app/actions/stand-update"
@@ -29,30 +32,56 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
     const audioRef = useRef<HTMLAudioElement | null>(null)
 
     const players = useAtomValue(playersAtom)
-    const game = useAtomValue(boerenBridgeGameAtom)
-    const getPlayerTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
+    const boerenBridgeGame = useAtomValue(boerenBridgeGameAtom)
+    const getBoerenBridgeTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
+    const schoppenvrouwenGame = useAtomValue(schoppenvrouwenGameAtom)
+    const getSchoppenvrouwenTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
 
     const buildGameState = useCallback(() => {
-        if (gameMode === "boerenbridge" && game) {
-            const playerStandings = game.playerOrder.map((id) => {
+        if (gameMode === "boerenbridge" && boerenBridgeGame) {
+            const playerStandings = boerenBridgeGame.playerOrder.map((id) => {
                 const player = players[id]
-                const roundScores = game.rounds
+                const roundScores = boerenBridgeGame.rounds
                     .filter((round) => round.bids[id] !== undefined && round.tricks[id] !== undefined)
                     .map((round) => calculateBoerenBridgeScore(round.bids[id], round.tricks[id]))
 
                 return {
                     name: player?.name || "Onbekend",
                     gender: player?.gender || "x",
-                    score: getPlayerTotal(id),
+                    score: getBoerenBridgeTotal(id),
                     roundScores
                 }
             })
 
             return {
                 players: playerStandings,
-                currentRound: game.currentRoundIndex + 1,
+                currentRound: boerenBridgeGame.currentRoundIndex + 1,
                 totalRounds: BOEREN_BRIDGE_ROUNDS.length,
                 gameMode: "boerenbridge" as const
+            }
+        }
+
+        if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
+            const playerStandings = schoppenvrouwenGame.playerOrder.map((id) => {
+                const player = players[id]
+                const roundScores = schoppenvrouwenGame.rounds
+                    .filter((round) => round.scores[id] !== undefined)
+                    .map((round) => round.scores[id])
+
+                return {
+                    name: player?.name || "Onbekend",
+                    gender: player?.gender || "x",
+                    score: getSchoppenvrouwenTotal(id),
+                    roundScores
+                }
+            })
+
+            return {
+                players: playerStandings,
+                currentRound: schoppenvrouwenGame.currentRoundIndex + 1,
+                totalRounds: undefined, // No fixed total - game ends at 1000 points
+                targetScore: SCHOPPENVROUWEN_TARGET_SCORE,
+                gameMode: "schoppenvrouwen" as const
             }
         }
 
@@ -75,7 +104,7 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
             totalRounds: maxRounds,
             gameMode: "generic" as const
         }
-    }, [gameMode, game, players, getPlayerTotal])
+    }, [gameMode, boerenBridgeGame, schoppenvrouwenGame, players, getBoerenBridgeTotal, getSchoppenvrouwenTotal])
 
     const handleGenerateUpdate = useCallback(async () => {
         setIsLoading(true)
@@ -179,12 +208,20 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
 
     // Check if there's enough data for an update
     const hasEnoughData = useCallback(() => {
-        if (gameMode === "boerenbridge" && game) {
+        if (gameMode === "boerenbridge" && boerenBridgeGame) {
             // Need at least 1 completed round
-            const completedRounds = game.rounds.filter(
+            const completedRounds = boerenBridgeGame.rounds.filter(
                 (r) =>
-                    Object.keys(r.bids).length === game.playerOrder.length &&
-                    Object.keys(r.tricks).length === game.playerOrder.length
+                    Object.keys(r.bids).length === boerenBridgeGame.playerOrder.length &&
+                    Object.keys(r.tricks).length === boerenBridgeGame.playerOrder.length
+            )
+            return completedRounds.length >= 1
+        }
+
+        if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
+            // Need at least 1 completed round
+            const completedRounds = schoppenvrouwenGame.rounds.filter(
+                (r) => Object.keys(r.scores).length === schoppenvrouwenGame.playerOrder.length
             )
             return completedRounds.length >= 1
         }
@@ -192,7 +229,7 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
         // Generic: need at least 1 round of scores
         const maxRounds = Math.max(...Object.values(players).map((p) => Object.keys(p.scores).length), 0)
         return maxRounds >= 1
-    }, [gameMode, game, players])
+    }, [gameMode, boerenBridgeGame, schoppenvrouwenGame, players])
 
     if (!hasEnoughData()) {
         return null

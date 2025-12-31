@@ -1,117 +1,139 @@
 "use client"
 
-import { Players } from "@/lib/atoms/players"
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
 import { useAtomValue } from "jotai"
 import { playersAtom, getNumberOfRoundsAtom } from "@/lib/atoms/players"
+import { gameModeAtom, schoppenvrouwenGameAtom } from "@/lib/atoms/game"
 
-type TableDataRow = {
-    round: number | string
-    [playerId: string]: number | string
-}
-
-function getColumns(players: Players): ColumnDef<TableDataRow>[] {
-    const playerColumns = Object.entries(players).map(([id, player]) => ({
-        accessorKey: id,
-        header: player.name.slice(0, 2)
-    }))
-
-    const roundColumn: ColumnDef<TableDataRow> = {
-        accessorKey: "round",
-        header: "#",
-        cell: (info) => info.getValue()
-    }
-
-    return [roundColumn, ...playerColumns]
-}
-
-interface DataTableProps<TData, TValue> {
-    columns: ColumnDef<TData, TValue>[]
-    data: TData[]
-}
-
-function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+export default function ScoresTable() {
     const router = useRouter()
-    const table = useReactTable({
-        data,
-        columns,
-        getCoreRowModel: getCoreRowModel()
-    })
+    const gameMode = useAtomValue(gameModeAtom)
+    const players = useAtomValue(playersAtom)
+    const rounds = useAtomValue(getNumberOfRoundsAtom)
+    const schoppenvrouwenGame = useAtomValue(schoppenvrouwenGameAtom)
 
-    return (
-        <div className="rounded-md border">
-            <Table>
-                <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => {
-                                return (
-                                    <TableHead key={header.id} className="text-right">
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(header.column.columnDef.header, header.getContext())}
-                                    </TableHead>
-                                )
-                            })}
+    // Schoppenvrouwen mode - use game-specific data
+    if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
+        const playerOrder = schoppenvrouwenGame.playerOrder
+        const gameRounds = schoppenvrouwenGame.rounds
+
+        // Get player names for headers
+        const playerNames = playerOrder.map((id) => {
+            const player = players[id]
+            return player?.name || `Speler ${id + 1}`
+        })
+
+        // Filter to only completed rounds
+        const completedRounds = gameRounds.filter((round) => Object.keys(round.scores).length > 0)
+
+        // Calculate totals
+        const totals = playerOrder.map((id) =>
+            gameRounds.reduce((sum, round) => sum + (round.scores[id] || 0), 0)
+        )
+
+        const handleRowClick = (roundIndex: number) => {
+            router.push(`/schoppenvrouwen/round/${roundIndex + 1}`)
+        }
+
+        return (
+            <div className="rounded-md border border-slate-600 overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="border-slate-600">
+                            <TableHead className="w-10 text-center text-gray-300 font-bold">#</TableHead>
+                            {playerNames.map((name, i) => (
+                                <TableHead key={i} className="text-right text-gray-200 font-bold px-3">
+                                    {name}
+                                </TableHead>
+                            ))}
                         </TableRow>
-                    ))}
-                </TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows?.length ? (
-                        table.getRowModel().rows.map((row, index) => (
+                    </TableHeader>
+                    <TableBody>
+                        {completedRounds.map((round, roundIndex) => (
                             <TableRow
-                                key={row.id}
-                                data-state={row.getIsSelected() && "selected"}
-                                className={index === table.getRowModel().rows.length - 1 ? "total-row" : ""}
-                                onClick={() => {
-                                    if (index === table.getRowModel().rows.length - 1) return
-                                    const roundNumber = parseInt(row.id) + 1
-                                    router.push(`/round/${roundNumber}`)
-                                }}
+                                key={roundIndex}
+                                className="border-slate-600 cursor-pointer hover:bg-slate-700/50"
+                                onClick={() => handleRowClick(roundIndex)}
                             >
-                                {row.getVisibleCells().map((cell) => (
-                                    <TableCell key={cell.id} className="text-right font-mono px-2">
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                <TableCell className="w-10 text-center text-gray-400 font-mono">
+                                    {roundIndex + 1}
+                                </TableCell>
+                                {playerOrder.map((id) => (
+                                    <TableCell key={id} className="text-right font-mono px-3 text-gray-200">
+                                        {round.scores[id] ?? "-"}
                                     </TableCell>
                                 ))}
                             </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={columns.length} className="h-24 text-center text-gray-200">
-                                No results.
-                            </TableCell>
+                        ))}
+                        {/* Total row */}
+                        <TableRow className="border-slate-600 bg-slate-700/50">
+                            <TableCell className="w-10 text-center text-gray-400 font-bold">Σ</TableCell>
+                            {totals.map((total, i) => (
+                                <TableCell key={i} className="text-right font-mono font-bold px-3 text-white">
+                                    {total}
+                                </TableCell>
+                            ))}
                         </TableRow>
-                    )}
+                    </TableBody>
+                </Table>
+            </div>
+        )
+    }
+
+    // Generic mode - use players atom
+    const playerEntries = Object.entries(players)
+    
+    // Calculate totals for generic mode
+    const totals = playerEntries.map(([, player]) =>
+        Object.values(player.scores).reduce((sum, score) => sum + score, 0)
+    )
+
+    const handleRowClick = (roundNumber: number) => {
+        router.push(`/round/${roundNumber}`)
+    }
+
+    return (
+        <div className="rounded-md border border-slate-600 overflow-hidden">
+            <Table>
+                <TableHeader>
+                    <TableRow className="border-slate-600">
+                        <TableHead className="w-10 text-center text-gray-300 font-bold">#</TableHead>
+                        {playerEntries.map(([id, player]) => (
+                            <TableHead key={id} className="text-right text-gray-200 font-bold px-3">
+                                {player.name}
+                            </TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {Array.from({ length: rounds }, (_, i) => i + 1).map((roundNum) => (
+                        <TableRow
+                            key={roundNum}
+                            className="border-slate-600 cursor-pointer hover:bg-slate-700/50"
+                            onClick={() => handleRowClick(roundNum)}
+                        >
+                            <TableCell className="w-10 text-center text-gray-400 font-mono">
+                                {roundNum}
+                            </TableCell>
+                            {playerEntries.map(([id, player]) => (
+                                <TableCell key={id} className="text-right font-mono px-3 text-gray-200">
+                                    {player.scores[roundNum] || 0}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    ))}
+                    {/* Total row */}
+                    <TableRow className="border-slate-600 bg-slate-700/50">
+                        <TableCell className="w-10 text-center text-gray-400 font-bold">Σ</TableCell>
+                        {totals.map((total, i) => (
+                            <TableCell key={i} className="text-right font-mono font-bold px-3 text-white">
+                                {total}
+                            </TableCell>
+                        ))}
+                    </TableRow>
                 </TableBody>
             </Table>
         </div>
     )
-}
-
-export default function ScoresTable() {
-    const players = useAtomValue(playersAtom)
-    const rounds = useAtomValue(getNumberOfRoundsAtom)
-    const data: TableDataRow[] = Array.from({ length: rounds }, (_, roundIndex) => {
-        const round = roundIndex + 1
-        const roundData: TableDataRow = { round }
-
-        Object.entries(players).forEach(([id, player]) => {
-            roundData[id] = player.scores[round] || 0
-        })
-
-        return roundData
-    })
-
-    // Add total scores row
-    const totalScoresRow: TableDataRow = { round: "" }
-    Object.entries(players).forEach(([id, player]) => {
-        totalScoresRow[id] = Object.values(player.scores).reduce((sum, score) => sum + score, 0)
-    })
-
-    data.push(totalScoresRow)
-
-    return <DataTable columns={getColumns(players)} data={data} />
 }

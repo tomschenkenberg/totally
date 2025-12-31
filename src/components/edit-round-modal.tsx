@@ -17,7 +17,6 @@ import {
     SheetDescription
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { AlertTriangle, Check, X } from "lucide-react"
 
@@ -111,7 +110,6 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                                 >
                                     {/* Player header */}
                                     <div className="flex items-center gap-3">
-                                        <PlayerAvatar player={player} className="w-10 h-10" />
                                         <span className="font-bold text-lg text-white">{player.name}</span>
                                         {hasBid && hasTricks && (
                                             <div className="flex items-center gap-2 ml-auto">

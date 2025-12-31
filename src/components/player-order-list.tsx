@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Player } from "@/lib/atoms/players"
-import PlayerAvatar from "@/components/avatar"
 import { Button } from "@/components/ui/button"
 import { GripVertical, Crown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -123,7 +122,6 @@ export function PlayerOrderList({
                     <GripVertical className="h-5 w-5 text-slate-500" />
 
                     <div className="flex items-center gap-2 flex-1">
-                        <PlayerAvatar player={item.player} />
                         <span className="text-lg font-semibold text-gray-200">{item.player.name}</span>
                     </div>
 

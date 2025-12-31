@@ -4,7 +4,6 @@ import { useAtom, useAtomValue } from "jotai"
 import { Button } from "../../../components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import PlayerAvatar from "../../../components/avatar"
 import React from "react"
 import { playersAtom, getPlayerScoresAtom, addScoreForRoundAtom, Player } from "@/lib/atoms/players"
 
@@ -37,7 +36,6 @@ const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; r
     return (
         <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-                <PlayerAvatar player={player} />
                 <span className="text-xl font-bold text-gray-200">{player.name}</span>
             </div>
             <span className="text-2xl font-bold ml-4 flex items-center gap-2">

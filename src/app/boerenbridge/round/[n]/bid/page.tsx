@@ -14,7 +14,6 @@ import {
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
-import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Crown, AlertTriangle, Check } from "lucide-react"
@@ -179,7 +178,6 @@ export default function BiddingPage() {
                 {(!allBidsComplete || isEditing) && activePlayer && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-center gap-4">
-                            <PlayerAvatar player={activePlayer} className="w-16 h-16" />
                             <span className="text-3xl font-bold text-white">{activePlayer.name}</span>
                             {isEditing && (
                                 <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold">Aanpassen</span>
@@ -274,7 +272,6 @@ export default function BiddingPage() {
                                 )}
                             >
                                 <div className="flex items-center gap-3">
-                                    <PlayerAvatar player={player} className="w-10 h-10" />
                                     <span className="font-bold text-lg text-white">{player.name}</span>
                                     {isBeingEdited && (
                                         <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded font-bold">bewerken</span>

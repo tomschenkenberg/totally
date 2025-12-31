@@ -14,7 +14,6 @@ import {
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
-import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState, useRef } from "react"
 import { Check, X, AlertTriangle } from "lucide-react"
@@ -298,7 +297,6 @@ export default function TricksPage() {
                 {(needsTricksInput || isEditing) && activePlayer && safeActivePlayerId !== null && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-center gap-4">
-                            <PlayerAvatar player={activePlayer} className="w-16 h-16" />
                             <div className="flex flex-col items-center">
                                 <span className="text-3xl font-bold text-white">
                                     {activePlayer.name}

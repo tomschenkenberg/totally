@@ -1,7 +1,6 @@
 "use client"
 
 import { Player } from "@/lib/atoms/players"
-import PlayerAvatar from "@/components/avatar"
 import { useAtomValue } from "jotai"
 import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"
 import { AddNewScoresButton } from "@/components/add-scores-button"
@@ -13,7 +12,6 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     return (
         <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-                <PlayerAvatar player={player} />
                 <span className="text-2xl font-bold text-gray-200">{player.name}</span>
             </div>
             <span className="text-2xl font-bold ml-4 font-mono text-gray-200">{getTotalScore(id)}</span>

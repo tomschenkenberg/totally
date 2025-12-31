@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Title from "@/components/title"
-import PlayerAvatar from "@/components/avatar"
 import { Crown } from "lucide-react"
 
 type Params = Promise<{ n: string }>
@@ -59,7 +58,6 @@ const InputPlayerScore = ({
     return (
         <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
             <div className="flex items-center space-x-2">
-                <PlayerAvatar player={player} />
                 <div className="flex flex-col">
                     <span className="text-xl font-bold text-gray-200">{player.name}</span>
                     <span className="text-sm text-gray-400 font-mono">Totaal: {totalScore}</span>

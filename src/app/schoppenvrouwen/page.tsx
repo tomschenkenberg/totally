@@ -15,7 +15,6 @@ import {
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
-import PlayerAvatar from "@/components/avatar"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
@@ -129,7 +128,6 @@ export default function SchoppenvrouwenScoreboard() {
                                 <PartyPopper className="h-8 w-8 text-amber-400" />
                             </div>
                             <div className="flex items-center justify-center gap-3">
-                                <PlayerAvatar player={winner} className="w-16 h-16 border-4 border-amber-500" />
                                 <div className="text-left">
                                     <div className="text-3xl font-bold text-white">{winner.name}</div>
                                     <div className="text-lg text-amber-300">wint met {winnerTotal} punten!</div>
@@ -215,7 +213,6 @@ export default function SchoppenvrouwenScoreboard() {
                                     >
                                         {index + 1}
                                     </span>
-                                    <PlayerAvatar player={item.player} className="w-10 h-10" />
                                     <span className="font-bold text-white text-lg">{item.player.name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">

@@ -31,6 +31,8 @@ export interface SchoppenvrouwenGame {
     dealerIndex: number // Index in playerOrder of current dealer
     currentRoundIndex: number
     rounds: SchoppenvrouwenRound[]
+    /** Set when a round becomes fully scored; used for tie-break (laatste finisher). */
+    lastRoundClosedByPlayerId?: number | null
 }
 
 // Constants
@@ -145,6 +147,17 @@ export const getForbiddenBidAtom = atom((get) => {
 // Calculate score for a player in a round
 export const calculateBoerenBridgeScore = (bid: number, tricks: number): number => {
     return bid === tricks ? 5 + tricks : -Math.abs(bid - tricks)
+}
+
+/** All players have bid and sum of bids equals card count — invalid Boerenbridge state. */
+export function boerenBridgeBidsSumEqualsCards(
+    round: BoerenBridgeRound,
+    cards: number,
+    playerCount: number
+): boolean {
+    if (Object.keys(round.bids).length !== playerCount) return false
+    const sum = Object.values(round.bids).reduce((s, b) => s + b, 0)
+    return sum === cards
 }
 
 // Get player's total score across all completed rounds
@@ -337,6 +350,10 @@ export const setDealerIndexAtom = atom(null, (get, set, dealerIndex: number) => 
 // SCHOPPENVROUWEN ATOMS
 // ============================================
 
+export function isSchoppenvrouwenRoundFullyScored(round: SchoppenvrouwenRound, playerCount: number): boolean {
+    return Object.keys(round.scores).length === playerCount
+}
+
 // Get current dealer player ID for Schoppenvrouwen
 export const getSchoppenvrouwenDealerIdAtom = atom((get) => {
     const game = get(schoppenvrouwenGameAtom)
@@ -351,17 +368,16 @@ export const getSchoppenvrouwenCurrentRoundAtom = atom((get) => {
     return game.rounds[game.currentRoundIndex] || null
 })
 
-// Get player's total score in Schoppenvrouwen
+// Get player's total score in Schoppenvrouwen (only fully scored rounds — avoids premature win mid-entry)
 export const getSchoppenvrouwenPlayerTotalAtom = atom((get) => (playerId: number) => {
     const game = get(schoppenvrouwenGameAtom)
     if (!game) return 0
 
+    const n = game.playerOrder.length
     return game.rounds.reduce((total, round) => {
+        if (!isSchoppenvrouwenRoundFullyScored(round, n)) return total
         const score = round.scores[playerId]
-        if (score !== undefined) {
-            return total + score
-        }
-        return total
+        return score !== undefined ? total + score : total
     }, 0)
 })
 
@@ -397,33 +413,13 @@ export const getSchoppenvrouwenWinnerAtom = atom((get) => {
     
     if (winners.length === 0) return null
     if (winners.length === 1) return winners[0]
-    
-    // Multiple winners - the "last finisher" wins
-    // This is the player who finished the last round (was last to play/be scored)
-    // In this game, we interpret "last finisher" as the player closest to the dealer
-    // going backwards in player order (since dealer deals, others play after)
-    const lastRound = game.rounds[game.rounds.length - 1]
-    if (!lastRound) return winners[0]
-    
-    // The player order determines who "finishes last" - it's whoever is 
-    // positioned just before the next dealer (i.e., dealer position itself)
-    const dealerIndex = game.dealerIndex
-    
-    // Find which winner is closest to dealer position going backwards
-    let bestWinner = winners[0]
-    let bestDistance = Infinity
-    
-    for (const winnerId of winners) {
-        const winnerIndex = game.playerOrder.indexOf(winnerId)
-        // Distance from dealer going backwards (dealer is "last" in round)
-        const distance = (dealerIndex - winnerIndex + game.playerOrder.length) % game.playerOrder.length
-        if (distance < bestDistance) {
-            bestDistance = distance
-            bestWinner = winnerId
-        }
+
+    const closer = game.lastRoundClosedByPlayerId
+    if (closer !== undefined && closer !== null && winners.includes(closer)) {
+        return closer
     }
-    
-    return bestWinner
+
+    return winners[0]
 })
 
 // Initialize a new Schoppenvrouwen game
@@ -438,7 +434,8 @@ export const initSchoppenvrouwenGameAtom = atom(
             playerOrder,
             dealerIndex,
             currentRoundIndex: 0,
-            rounds: [initialRound]
+            rounds: [initialRound],
+            lastRoundClosedByPlayerId: null
         })
         set(gameModeAtom, "schoppenvrouwen")
     }
@@ -453,10 +450,17 @@ export const setSchoppenvrouwenScoreAtom = atom(
 
         const updatedRounds = [...game.rounds]
         const currentRound = { ...updatedRounds[game.currentRoundIndex] }
+        const prevComplete = isSchoppenvrouwenRoundFullyScored(currentRound, game.playerOrder.length)
         currentRound.scores = { ...currentRound.scores, [playerId]: score }
+        const nextComplete = isSchoppenvrouwenRoundFullyScored(currentRound, game.playerOrder.length)
         updatedRounds[game.currentRoundIndex] = currentRound
 
-        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds })
+        let lastRoundClosedByPlayerId = game.lastRoundClosedByPlayerId ?? null
+        if (nextComplete && !prevComplete) {
+            lastRoundClosedByPlayerId = playerId
+        }
+
+        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds, lastRoundClosedByPlayerId })
     }
 )
 
@@ -469,10 +473,17 @@ export const setSchoppenvrouwenScoreForRoundAtom = atom(
 
         const updatedRounds = [...game.rounds]
         const round = { ...updatedRounds[roundIndex] }
+        const prevComplete = isSchoppenvrouwenRoundFullyScored(round, game.playerOrder.length)
         round.scores = { ...round.scores, [playerId]: score }
+        const nextComplete = isSchoppenvrouwenRoundFullyScored(round, game.playerOrder.length)
         updatedRounds[roundIndex] = round
 
-        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds })
+        let lastRoundClosedByPlayerId = game.lastRoundClosedByPlayerId ?? null
+        if (nextComplete && !prevComplete) {
+            lastRoundClosedByPlayerId = playerId
+        }
+
+        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds, lastRoundClosedByPlayerId })
     }
 )
 

@@ -11,8 +11,8 @@ export const AddNewScoresButton = () => {
 
     return (
         <Link href={`/round/${nextRound}`} prefetch={true}>
-            <Button variant="default" className="w-full text-xl">
-                Add scores for round {nextRound}
+            <Button variant="default" className="w-full text-lg h-12 rounded-xl">
+                Scores voor ronde {nextRound}
             </Button>
         </Link>
     )

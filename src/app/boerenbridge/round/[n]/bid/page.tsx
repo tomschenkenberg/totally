@@ -10,7 +10,8 @@ import {
     getBiddingOrderAtom,
     getCurrentRoundAtom,
     setBidAtom,
-    clearBidAtom
+    clearBidAtom,
+    boerenBridgeBidsSumEqualsCards
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
@@ -34,37 +35,27 @@ export default function BiddingPage() {
 
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
     const [isHydrated, setIsHydrated] = useState(false)
-    const [submittingBid, setSubmittingBid] = useState<{ bid: number; playerId: number } | null>(
-        null
-    )
+    const [submittingBid, setSubmittingBid] = useState<{ bid: number; playerId: number } | null>(null)
 
-    // Wait for hydration
     useEffect(() => {
         setIsHydrated(true)
     }, [])
 
-    // Calculate the current bidder index based on who hasn't bid yet
-    // This is derived from the game state, not local state
     const calculatedBidderIndex = currentRound && biddingOrder.length > 0
         ? biddingOrder.findIndex((playerId) => {
-            // Check if player has NOT bid (localStorage may serialize keys as strings)
             const hasBid = playerId in currentRound.bids || String(playerId) in currentRound.bids
             return !hasBid
         })
         : 0
-    // If -1 (all have bid), keep it as -1 to let allBidsComplete handle it
     const currentBidderIndex = calculatedBidderIndex
 
-    // Redirect if no game or wrong round (only after hydration and data loaded)
     useEffect(() => {
         if (!isHydrated || !game || !currentRound) return
-        
         if (roundNumber !== game.currentRoundIndex + 1) {
             router.replace(`/boerenbridge/round/${game.currentRoundIndex + 1}/bid`)
         }
     }, [game, currentRound, roundNumber, router, isHydrated])
 
-    // Redirect to setup if no game
     useEffect(() => {
         if (!isHydrated) return
         if (!game) {
@@ -74,40 +65,37 @@ export default function BiddingPage() {
 
     if (!isHydrated || !game || !currentRound) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-gray-400">Laden...</div>
+            <div className="flex items-center justify-center py-16">
+                <div className="text-zinc-500">Laden...</div>
             </div>
         )
     }
 
-    // Safely get current bidder (handle -1 case when all have bid)
-    const currentBidderId = currentBidderIndex >= 0 && currentBidderIndex < biddingOrder.length 
-        ? biddingOrder[currentBidderIndex] 
+    const currentBidderId = currentBidderIndex >= 0 && currentBidderIndex < biddingOrder.length
+        ? biddingOrder[currentBidderIndex]
         : null
     const currentBidder = currentBidderId !== null ? players[currentBidderId] : null
 
-    // Calculate total bids so far (excluding the player being edited)
     const totalBids = editingPlayerId !== null
         ? Object.entries(currentRound.bids)
             .filter(([id]) => Number(id) !== editingPlayerId)
             .reduce((sum, [, bid]) => sum + bid, 0)
         : Object.values(currentRound.bids).reduce((sum, bid) => sum + bid, 0)
 
-    // Get the active player (being edited or currently bidding)
     const activePlayerId = editingPlayerId ?? currentBidderId
     const activePlayer = activePlayerId !== null ? players[activePlayerId] : null
     const isEditing = editingPlayerId !== null
 
-    // Calculate forbidden bid for last bidder (when editing, recalculate based on remaining bids)
-    // Check if the active player (being edited or currently bidding) is the last bidder
     const activePlayerIndex = editingPlayerId !== null
         ? biddingOrder.indexOf(editingPlayerId)
         : currentBidderIndex
     const isLastBidder = activePlayerIndex === biddingOrder.length - 1
     const forbiddenBid = isLastBidder ? cards - totalBids : null
 
-    // Check if all bids are complete
     const allBidsComplete = Object.keys(currentRound.bids).length === biddingOrder.length
+    const bidsSumInvalid =
+        allBidsComplete &&
+        boerenBridgeBidsSumEqualsCards(currentRound, cards, biddingOrder.length)
 
     const handleBid = async (bid: number) => {
         if (submittingBid) return
@@ -115,20 +103,15 @@ export default function BiddingPage() {
         const playerId = editingPlayerId ?? currentBidderId
         if (playerId === null) return
 
-        // Capture whether we're in editing mode NOW, before the delay
         const wasEditing = editingPlayerId !== null
-
         setSubmittingBid({ bid, playerId })
 
-        // Show feedback for a short moment
         await new Promise((resolve) => setTimeout(resolve, 750))
 
-        // Use the captured playerId and wasEditing, not current state
         setBid({ playerId, bid })
         if (wasEditing) {
             setEditingPlayerId(null)
         }
-
         setSubmittingBid(null)
     }
 
@@ -142,10 +125,8 @@ export default function BiddingPage() {
 
     const handleBack = () => {
         if (editingPlayerId !== null) {
-            // Cancel editing
             setEditingPlayerId(null)
         } else if (currentBidderIndex > 0) {
-            // Go back to previous bidder by clearing their bid
             const prevBidderId = biddingOrder[currentBidderIndex - 1]
             clearBid({ playerId: prevBidderId })
         }
@@ -153,52 +134,48 @@ export default function BiddingPage() {
 
     return (
         <>
-            <Title>
-                Bieden - {cards} kaarten
-            </Title>
+            <Title>Bieden - {cards} kaarten</Title>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {/* Dealer info */}
-                <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-3">
                     <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                            <Crown className="h-6 w-6 text-amber-500" />
-                            <span className="text-gray-300 font-medium">Deler:</span>
-                            <span className="ml-1 text-xl font-bold text-white">
+                        <div className="flex items-center gap-2">
+                            <Crown className="h-5 w-5 text-amber-400" />
+                            <span className="text-zinc-400 text-sm">Deler:</span>
+                            <span className="font-bold text-white">
                                 {dealerId !== null && players[dealerId]?.name}
                             </span>
                         </div>
-                        <div className="text-base text-gray-300">
-                            Totaal: <span className="font-bold text-white text-lg">{totalBids}</span> / {cards}
+                        <div className="text-sm text-zinc-400">
+                            Totaal: <span className="font-bold text-white text-lg font-mono">{totalBids}</span>
+                            <span className="text-zinc-600">/{cards}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Current bidder or editing player */}
+                {/* Current bidder */}
                 {(!allBidsComplete || isEditing) && activePlayer && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-center gap-4">
-                            <span className="text-3xl font-bold text-white">{activePlayer.name}</span>
+                        <div className="flex items-center justify-center gap-3">
+                            <span className="text-2xl font-bold text-white">{activePlayer.name}</span>
                             {isEditing && (
-                                <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold">Aanpassen</span>
+                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-semibold ring-1 ring-amber-500/30">Aanpassen</span>
                             )}
                             {!isEditing && isLastBidder && (
-                                <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold">Laatste</span>
+                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-semibold ring-1 ring-amber-500/30">Laatste</span>
                             )}
                         </div>
 
-                        {/* Forbidden bid warning */}
                         {isLastBidder && forbiddenBid !== null && forbiddenBid >= 0 && forbiddenBid <= cards && (
-                            <div className="flex items-center gap-2 justify-center text-amber-400 text-lg font-bold bg-amber-900/30 p-2 rounded">
-                                <AlertTriangle className="h-6 w-6" />
-                                <span>
-                                    {forbiddenBid} mag niet
-                                </span>
+                            <div className="flex items-center gap-2 justify-center text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl text-sm font-semibold">
+                                <AlertTriangle className="h-4 w-4" />
+                                <span>{forbiddenBid} mag niet</span>
                             </div>
                         )}
 
                         {/* Bid buttons */}
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-4 gap-2">
                             {Array.from({ length: cards + 1 }, (_, i) => i).map((bid) => {
                                 const isForbidden =
                                     isLastBidder && forbiddenBid !== null && bid === forbiddenBid
@@ -213,19 +190,19 @@ export default function BiddingPage() {
                                         disabled={isForbidden || isSubmittingOther || isSelected}
                                         variant={isForbidden ? "outline" : "default"}
                                         className={cn(
-                                            "text-3xl font-bold py-8 transition-all duration-300 transform",
+                                            "text-2xl font-bold h-16 rounded-xl transition-all duration-200",
                                             isForbidden
-                                                ? "opacity-40 cursor-not-allowed line-through border-2 border-red-500 text-red-400"
+                                                ? "opacity-30 line-through border-red-500/30 text-red-400 bg-transparent"
                                                 : isSelected
-                                                  ? "bg-green-500 hover:bg-green-600 scale-105 ring-4 ring-green-300 text-white"
+                                                  ? "bg-green-500 hover:bg-green-600 scale-105 ring-2 ring-green-400/50 text-white"
                                                   : isEditing
                                                     ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                                    : "bg-emerald-600 hover:bg-emerald-700 text-white",
-                                            isSubmittingOther && "opacity-50 scale-95"
+                                                    : "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white",
+                                            isSubmittingOther && "opacity-40 scale-95"
                                         )}
                                     >
                                         {isSelected ? (
-                                            <Check className="w-8 h-8 animate-bounce" />
+                                            <Check className="w-7 h-7 animate-bounce" />
                                         ) : (
                                             bid
                                         )}
@@ -234,10 +211,9 @@ export default function BiddingPage() {
                             })}
                         </div>
 
-                        {/* Back/Cancel button */}
                         {((currentBidderIndex > 0 && currentBidderIndex !== -1) || isEditing) && (
-                            <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400 text-lg py-4">
-                                {isEditing ? "✕ Annuleren" : "← Vorige speler"}
+                            <Button variant="ghost" onClick={handleBack} className="w-full text-zinc-500 h-12 rounded-xl">
+                                {isEditing ? "Annuleren" : "← Vorige speler"}
                             </Button>
                         )}
                     </div>
@@ -245,66 +221,75 @@ export default function BiddingPage() {
 
                 {/* Bids summary */}
                 <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-gray-200">
+                    <h3 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider px-1">
                         Biedingen
                         {allBidsComplete && (
-                            <span className="text-sm font-normal text-gray-400 ml-2">
-                                (klik om aan te passen)
+                            <span className="normal-case tracking-normal font-normal text-zinc-600 ml-1.5">
+                                (tik om aan te passen)
                             </span>
                         )}
                     </h3>
-                    {biddingOrder.map((playerId, index) => {
-                        const player = players[playerId]
-                        const bid = currentRound.bids[playerId]
-                        const hasBid = bid !== undefined
-                        const isBeingEdited = editingPlayerId === playerId
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
+                        {biddingOrder.map((playerId, index) => {
+                            const player = players[playerId]
+                            const bid = currentRound.bids[playerId]
+                            const hasBid = bid !== undefined
+                            const isBeingEdited = editingPlayerId === playerId
 
-                        return (
-                            <div
-                                key={playerId}
-                                onClick={() => hasBid && handleEditPlayer(playerId)}
-                                className={cn(
-                                    "flex items-center justify-between p-3 rounded-lg transition-all",
-                                    hasBid
-                                        ? "bg-slate-700 cursor-pointer hover:bg-slate-600 border border-slate-600"
-                                        : "bg-slate-800 opacity-50",
-                                    isBeingEdited && "ring-4 ring-amber-500 bg-slate-600"
-                                )}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="font-bold text-lg text-white">{player.name}</span>
-                                    {isBeingEdited && (
-                                        <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded font-bold">bewerken</span>
-                                    )}
-                                    {index === biddingOrder.length - 1 && !isBeingEdited && (
-                                        <span className="text-sm font-bold text-amber-400 ml-2">(laatste)</span>
-                                    )}
-                                </div>
-                                <span
+                            return (
+                                <div
+                                    key={playerId}
+                                    onClick={() => hasBid && handleEditPlayer(playerId)}
                                     className={cn(
-                                        "text-2xl font-bold font-mono",
-                                        hasBid ? "text-emerald-400" : "text-gray-500"
+                                        "flex items-center justify-between px-4 py-3 transition-all",
+                                        hasBid ? "active:bg-zinc-800" : "opacity-40",
+                                        isBeingEdited && "ring-2 ring-inset ring-amber-500/50 bg-amber-500/5"
                                     )}
                                 >
-                                    {hasBid ? bid : "-"}
-                                </span>
-                            </div>
-                        )
-                    })}
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-white">{player.name}</span>
+                                        {isBeingEdited && (
+                                            <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-semibold">bewerken</span>
+                                        )}
+                                        {index === biddingOrder.length - 1 && !isBeingEdited && (
+                                            <span className="text-xs text-amber-500/60">(laatste)</span>
+                                        )}
+                                    </div>
+                                    <span
+                                        className={cn(
+                                            "text-xl font-bold font-mono",
+                                            hasBid ? "text-emerald-400" : "text-zinc-700"
+                                        )}
+                                    >
+                                        {hasBid ? bid : "-"}
+                                    </span>
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
 
-                {/* Continue button - show who plays first */}
+                {allBidsComplete && bidsSumInvalid && (
+                    <div className="flex items-center gap-2 text-red-300 bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                        <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
+                        <span className="text-sm font-semibold">
+                            Totaal geboden ({totalBids}) mag niet precies {cards} zijn. Pas een bod aan.
+                        </span>
+                    </div>
+                )}
+
                 {allBidsComplete && !isEditing && (
-                    <div className="space-y-4">
-                        <div className="bg-emerald-900/40 border-2 border-emerald-600 rounded-lg p-5 text-center">
-                            <span className="text-gray-200 text-lg block mb-1">Eerste speler: </span>
-                            <span className="text-3xl font-bold text-emerald-400 block">
+                    <div className="space-y-3">
+                        <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 text-center">
+                            <span className="text-sm text-zinc-400">Eerste speler</span>
+                            <span className="text-xl font-bold text-emerald-400 block mt-0.5">
                                 {players[biddingOrder[0]]?.name}
                             </span>
                         </div>
                         <Button
                             onClick={handleContinue}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-2xl font-bold py-8"
+                            disabled={bidsSumInvalid}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg font-bold h-14 rounded-xl"
                         >
                             Slagen invoeren →
                         </Button>
@@ -314,4 +299,3 @@ export default function BiddingPage() {
         </>
     )
 }
-

@@ -10,11 +10,9 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     const getTotalScore = useAtomValue(getTotalScoreAtom)
 
     return (
-        <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-                <span className="text-2xl font-bold text-gray-200">{player.name}</span>
-            </div>
-            <span className="text-2xl font-bold ml-4 font-mono text-gray-200">{getTotalScore(id)}</span>
+        <div className="flex justify-between items-center px-4 py-3">
+            <span className="text-lg font-semibold text-white">{player.name}</span>
+            <span className="text-xl font-bold font-mono tabular-nums text-white">{getTotalScore(id)}</span>
         </div>
     )
 }
@@ -25,15 +23,15 @@ export default function Scoreboard() {
 
     return (
         <>
-            <div className="text-lg text-center text-gray-200">
-                After <span className="font-bold">{numberOfRounds}</span> rounds
+            <div className="text-sm text-center text-zinc-500">
+                Na <span className="font-bold text-zinc-300">{numberOfRounds}</span> rondes
             </div>
-            <div className="flex flex-col space-y-4 pb-6">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
                 {sortedPlayers.map(({ id, player }) => (
                     <PlayerScore key={id} id={id} player={player} />
                 ))}
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
                 <StandUpdate gameMode="generic" />
                 <AddNewScoresButton />
             </div>

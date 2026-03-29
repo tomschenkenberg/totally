@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from "react"
 import { useAtomValue } from "jotai"
 import { readStreamableValue } from "@ai-sdk/rsc"
 import { Button } from "@/components/ui/button"
-import { playersAtom } from "@/lib/atoms/players"
+import { playersAtom, maxRoundKeyFromPlayers, sortedUnionRoundKeys } from "@/lib/atoms/players"
 import {
     boerenBridgeGameAtom,
     getPlayerBoerenBridgeTotalAtom,
@@ -13,7 +13,8 @@ import {
     schoppenvrouwenGameAtom,
     getSchoppenvrouwenPlayerTotalAtom,
     SCHOPPENVROUWEN_TARGET_SCORE,
-    GameMode
+    GameMode,
+    isSchoppenvrouwenRoundFullyScored
 } from "@/lib/atoms/game"
 import { generateStandUpdate } from "@/app/actions/stand-update"
 import { Sparkles, Volume2, Loader2, Square } from "lucide-react"
@@ -62,11 +63,12 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
         }
 
         if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
+            const n = schoppenvrouwenGame.playerOrder.length
             const playerStandings = schoppenvrouwenGame.playerOrder.map((id) => {
                 const player = players[id]
                 const roundScores = schoppenvrouwenGame.rounds
-                    .filter((round) => round.scores[id] !== undefined)
-                    .map((round) => round.scores[id])
+                    .filter((round) => isSchoppenvrouwenRoundFullyScored(round, n))
+                    .map((round) => round.scores[id] ?? 0)
 
                 return {
                     name: player?.name || "Onbekend",
@@ -79,29 +81,26 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
             return {
                 players: playerStandings,
                 currentRound: schoppenvrouwenGame.currentRoundIndex + 1,
-                totalRounds: undefined, // No fixed total - game ends at 1000 points
+                totalRounds: undefined,
                 targetScore: SCHOPPENVROUWEN_TARGET_SCORE,
                 gameMode: "schoppenvrouwen" as const
             }
         }
 
-        // Generic game mode
-        const playerStandings = Object.entries(players).map(([id, player]) => {
-            const scores = Object.values(player.scores)
-            return {
-                name: player.name,
-                gender: player.gender || "x",
-                score: scores.reduce((a, b) => a + b, 0),
-                roundScores: scores
-            }
-        })
-
-        const maxRounds = Math.max(...playerStandings.map((p) => p.roundScores.length), 0)
+        const roundKeys = sortedUnionRoundKeys(players)
+        const maxRound = maxRoundKeyFromPlayers(players)
+        const playerStandings = Object.entries(players).map(([, player]) => ({
+            name: player.name,
+            gender: player.gender || "x",
+            score: Object.values(player.scores).reduce((a, b) => a + b, 0),
+            roundScores: roundKeys.map((r) => player.scores[r] ?? 0)
+        }))
 
         return {
             players: playerStandings,
-            currentRound: maxRounds,
-            totalRounds: maxRounds,
+            currentRound: maxRound,
+            totalRounds: maxRound,
+            roundNumbers: roundKeys,
             gameMode: "generic" as const
         }
     }, [gameMode, boerenBridgeGame, schoppenvrouwenGame, players, getBoerenBridgeTotal, getSchoppenvrouwenTotal])
@@ -142,18 +141,15 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
     const handleSpeak = useCallback(async () => {
         if (!update) return
 
-        // Stop if already playing (check actual audio state, not React state)
         if (audioRef.current && !audioRef.current.paused) {
             stopAudio()
             return
         }
 
-        // Also stop any existing audio before starting new
         stopAudio()
         setIsLoadingAudio(true)
 
         try {
-            // Fetch audio from API route
             const response = await fetch("/api/speak", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -164,20 +160,13 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
                 throw new Error("Failed to generate speech")
             }
 
-            // Get raw audio data and create blob with explicit type
             const arrayBuffer = await response.arrayBuffer()
             const blob = new Blob([arrayBuffer], { type: "audio/mpeg" })
-            console.log("Audio blob:", blob.size, "bytes, type:", blob.type)
-            
             const audioUrl = URL.createObjectURL(blob)
-            console.log("Audio URL:", audioUrl)
-            
             const audio = new Audio()
             audioRef.current = audio
 
-            // Set up event handlers before setting src
             audio.oncanplaythrough = () => {
-                console.log("Audio ready to play")
                 setIsSpeaking(true)
                 audio.play().catch(err => {
                     console.error("Play failed:", err)
@@ -185,17 +174,14 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
                 })
             }
             audio.onended = () => {
-                console.log("Audio ended")
                 setIsSpeaking(false)
                 URL.revokeObjectURL(audioUrl)
             }
-            audio.onerror = (e) => {
-                console.error("Audio error event:", audio.error?.code, audio.error?.message)
+            audio.onerror = () => {
                 setIsSpeaking(false)
                 URL.revokeObjectURL(audioUrl)
             }
 
-            // Set source and load
             audio.src = audioUrl
             audio.load()
         } catch (error) {
@@ -206,10 +192,8 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
         }
     }, [update, stopAudio])
 
-    // Check if there's enough data for an update
     const hasEnoughData = useCallback(() => {
         if (gameMode === "boerenbridge" && boerenBridgeGame) {
-            // Need at least 1 completed round
             const completedRounds = boerenBridgeGame.rounds.filter(
                 (r) =>
                     Object.keys(r.bids).length === boerenBridgeGame.playerOrder.length &&
@@ -219,16 +203,14 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
         }
 
         if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
-            // Need at least 1 completed round
-            const completedRounds = schoppenvrouwenGame.rounds.filter(
-                (r) => Object.keys(r.scores).length === schoppenvrouwenGame.playerOrder.length
+            const n = schoppenvrouwenGame.playerOrder.length
+            const completedRounds = schoppenvrouwenGame.rounds.filter((r) =>
+                isSchoppenvrouwenRoundFullyScored(r, n)
             )
             return completedRounds.length >= 1
         }
 
-        // Generic: need at least 1 round of scores
-        const maxRounds = Math.max(...Object.values(players).map((p) => Object.keys(p.scores).length), 0)
-        return maxRounds >= 1
+        return Object.values(players).some((p) => Object.keys(p.scores).length > 0)
     }, [gameMode, boerenBridgeGame, schoppenvrouwenGame, players])
 
     if (!hasEnoughData()) {
@@ -236,35 +218,31 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-2">
             <Button
                 onClick={handleGenerateUpdate}
                 disabled={isLoading}
                 variant="outline"
                 className={cn(
-                    "w-full border-purple-500/50 bg-purple-900/20 hover:bg-purple-900/40 text-purple-200 hover:text-purple-100",
-                    "transition-all duration-300"
+                    "w-full h-11 rounded-xl border-purple-500/30 bg-purple-500/5 text-purple-300",
+                    "hover:bg-purple-500/10 hover:text-purple-200 hover:border-purple-500/40",
+                    "transition-all duration-200"
                 )}
             >
                 {isLoading ? (
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                    <Sparkles className="h-5 w-5 mr-2" />
+                    <Sparkles className="h-4 w-4 mr-2" />
                 )}
                 {isLoading ? "Genereren..." : "AI Stand Update"}
             </Button>
 
             {showUpdate && (
-                <div
-                    className={cn(
-                        "relative p-4 rounded-lg border border-purple-500/30 bg-purple-900/20",
-                        "animate-in fade-in slide-in-from-top-2 duration-300"
-                    )}
-                >
-                    <div className="pr-12">
-                        <p className="text-gray-100 leading-relaxed">
+                <div className="relative rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+                    <div className="pr-10">
+                        <p className="text-sm text-zinc-200 leading-relaxed">
                             {update || (
-                                <span className="text-gray-400 italic">Aan het nadenken...</span>
+                                <span className="text-zinc-500 italic">Aan het nadenken...</span>
                             )}
                         </p>
                     </div>
@@ -275,15 +253,15 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
                             variant="ghost"
                             size="icon"
                             disabled={isLoadingAudio}
-                            className="absolute top-3 right-3 text-purple-300 hover:text-purple-100 hover:bg-purple-800/50 disabled:opacity-50"
+                            className="absolute top-3 right-3 h-8 w-8 text-purple-400 hover:text-purple-200 hover:bg-purple-500/10 rounded-lg"
                             title={isSpeaking ? "Stop" : isLoadingAudio ? "Audio laden..." : "Voorlezen"}
                         >
                             {isLoadingAudio ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" />
                             ) : isSpeaking ? (
-                                <Square className="h-4 w-4 fill-current" />
+                                <Square className="h-3.5 w-3.5 fill-current" />
                             ) : (
-                                <Volume2 className="h-5 w-5" />
+                                <Volume2 className="h-4 w-4" />
                             )}
                         </Button>
                     )}
@@ -292,4 +270,3 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
         </div>
     )
 }
-

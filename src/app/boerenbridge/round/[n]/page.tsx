@@ -38,8 +38,8 @@ export default function RoundPage() {
     }, [game, roundNumber, router])
 
     return (
-        <div className="flex items-center justify-center py-12">
-            <div className="text-gray-400">Laden...</div>
+        <div className="flex items-center justify-center py-16">
+            <div className="text-zinc-500">Laden...</div>
         </div>
     )
 }

@@ -11,6 +11,35 @@ export interface Player {
 }
 export type Players = { [id: number]: Player }
 
+/** Numeric round keys from a player's scores (object keys are stringified in storage). */
+export function numericScoreKeysForPlayer(player: Player): number[] {
+    return Object.keys(player.scores)
+        .map((k) => Number(k))
+        .filter((n) => Number.isFinite(n))
+}
+
+/** Highest round key across all players (0 if none). */
+export function maxRoundKeyFromPlayers(players: Players): number {
+    let max = 0
+    for (const p of Object.values(players)) {
+        for (const n of numericScoreKeysForPlayer(p)) {
+            if (n > max) max = n
+        }
+    }
+    return max
+}
+
+/** Union of all players' round keys, sorted ascending (timeline for generic / stand update). */
+export function sortedUnionRoundKeys(players: Players): number[] {
+    const keys = new Set<number>()
+    for (const p of Object.values(players)) {
+        for (const n of numericScoreKeysForPlayer(p)) {
+            keys.add(n)
+        }
+    }
+    return [...keys].sort((a, b) => a - b)
+}
+
 // Base atoms
 export const playersAtom = atomWithStorage<Players>("players", {})
 export const syncWithCodeAtom = atomWithStorage<string | null>("syncWithCode", null)
@@ -74,11 +103,8 @@ export const addScoreForRoundAtom = atom(
     }
 )
 
-export const getNumberOfRoundsAtom = atom((get) => {
-    const players = get(playersAtom)
-    const playerScores = Object.values(players).map((player) => Object.values(player.scores)?.length)
-    return Math.max(0, ...playerScores) || 0
-})
+/** Max round number (score map key), not count of entries — supports non-sequential keys. */
+export const getNumberOfRoundsAtom = atom((get) => maxRoundKeyFromPlayers(get(playersAtom)))
 
 export const getPlayersSortedByScoreAtom = atom((get) => {
     const players = get(playersAtom)

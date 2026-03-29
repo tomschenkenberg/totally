@@ -4,7 +4,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useRouter } from "next/navigation"
 import { useAtomValue } from "jotai"
 import { playersAtom, getNumberOfRoundsAtom } from "@/lib/atoms/players"
-import { gameModeAtom, schoppenvrouwenGameAtom } from "@/lib/atoms/game"
+import {
+    gameModeAtom,
+    schoppenvrouwenGameAtom,
+    isSchoppenvrouwenRoundFullyScored
+} from "@/lib/atoms/game"
 
 export default function ScoresTable() {
     const router = useRouter()
@@ -13,64 +17,66 @@ export default function ScoresTable() {
     const rounds = useAtomValue(getNumberOfRoundsAtom)
     const schoppenvrouwenGame = useAtomValue(schoppenvrouwenGameAtom)
 
-    // Schoppenvrouwen mode - use game-specific data
     if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
         const playerOrder = schoppenvrouwenGame.playerOrder
         const gameRounds = schoppenvrouwenGame.rounds
 
-        // Get player names for headers
         const playerNames = playerOrder.map((id) => {
             const player = players[id]
             return player?.name || `Speler ${id + 1}`
         })
 
-        // Filter to only completed rounds
-        const completedRounds = gameRounds.filter((round) => Object.keys(round.scores).length > 0)
-
-        // Calculate totals
         const totals = playerOrder.map((id) =>
-            gameRounds.reduce((sum, round) => sum + (round.scores[id] || 0), 0)
+            gameRounds.reduce((sum, round) => {
+                if (!isSchoppenvrouwenRoundFullyScored(round, playerOrder.length)) return sum
+                return sum + (round.scores[id] || 0)
+            }, 0)
         )
 
-        const handleRowClick = (roundIndex: number) => {
-            router.push(`/schoppenvrouwen/round/${roundIndex + 1}`)
+        const handleRowClick = (gameRoundIndex: number) => {
+            router.push(`/schoppenvrouwen/round/${gameRoundIndex + 1}`)
         }
 
         return (
-            <div className="rounded-md border border-slate-600 overflow-hidden">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
                 <Table>
                     <TableHeader>
-                        <TableRow className="border-slate-600">
-                            <TableHead className="w-10 text-center text-gray-300 font-bold">#</TableHead>
+                        <TableRow className="border-zinc-800 hover:bg-transparent">
+                            <TableHead className="w-10 text-center text-zinc-500 font-semibold text-xs">#</TableHead>
                             {playerNames.map((name, i) => (
-                                <TableHead key={i} className="text-right text-gray-200 font-bold px-3">
+                                <TableHead key={i} className="text-right text-zinc-400 font-semibold text-xs px-3">
                                     {name}
                                 </TableHead>
                             ))}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {completedRounds.map((round, roundIndex) => (
-                            <TableRow
-                                key={roundIndex}
-                                className="border-slate-600 cursor-pointer hover:bg-slate-700/50"
-                                onClick={() => handleRowClick(roundIndex)}
-                            >
-                                <TableCell className="w-10 text-center text-gray-400 font-mono">
-                                    {roundIndex + 1}
-                                </TableCell>
-                                {playerOrder.map((id) => (
-                                    <TableCell key={id} className="text-right font-mono px-3 text-gray-200">
-                                        {round.scores[id] ?? "-"}
+                        {gameRounds.map((round, gameRoundIndex) => {
+                            if (Object.keys(round.scores).length === 0) return null
+                            return (
+                                <TableRow
+                                    key={gameRoundIndex}
+                                    className="border-zinc-800/50 active:bg-zinc-800"
+                                    onClick={() => handleRowClick(gameRoundIndex)}
+                                >
+                                    <TableCell className="w-10 text-center text-zinc-500 font-mono text-xs">
+                                        {gameRoundIndex + 1}
                                     </TableCell>
-                                ))}
-                            </TableRow>
-                        ))}
-                        {/* Total row */}
-                        <TableRow className="border-slate-600 bg-slate-700/50">
-                            <TableCell className="w-10 text-center text-gray-400 font-bold">Σ</TableCell>
+                                    {playerOrder.map((id) => (
+                                        <TableCell
+                                            key={id}
+                                            className="text-right font-mono px-3 text-zinc-300 text-sm"
+                                        >
+                                            {round.scores[id] ?? "-"}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            )
+                        })}
+                        <TableRow className="border-zinc-800 bg-zinc-800/30 hover:bg-zinc-800/30">
+                            <TableCell className="w-10 text-center text-zinc-500 font-bold text-xs">Σ</TableCell>
                             {totals.map((total, i) => (
-                                <TableCell key={i} className="text-right font-mono font-bold px-3 text-white">
+                                <TableCell key={i} className="text-right font-mono font-bold px-3 text-white text-sm">
                                     {total}
                                 </TableCell>
                             ))}
@@ -81,10 +87,8 @@ export default function ScoresTable() {
         )
     }
 
-    // Generic mode - use players atom
     const playerEntries = Object.entries(players)
-    
-    // Calculate totals for generic mode
+
     const totals = playerEntries.map(([, player]) =>
         Object.values(player.scores).reduce((sum, score) => sum + score, 0)
     )
@@ -94,13 +98,13 @@ export default function ScoresTable() {
     }
 
     return (
-        <div className="rounded-md border border-slate-600 overflow-hidden">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
             <Table>
                 <TableHeader>
-                    <TableRow className="border-slate-600">
-                        <TableHead className="w-10 text-center text-gray-300 font-bold">#</TableHead>
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                        <TableHead className="w-10 text-center text-zinc-500 font-semibold text-xs">#</TableHead>
                         {playerEntries.map(([id, player]) => (
-                            <TableHead key={id} className="text-right text-gray-200 font-bold px-3">
+                            <TableHead key={id} className="text-right text-zinc-400 font-semibold text-xs px-3">
                                 {player.name}
                             </TableHead>
                         ))}
@@ -110,24 +114,23 @@ export default function ScoresTable() {
                     {Array.from({ length: rounds }, (_, i) => i + 1).map((roundNum) => (
                         <TableRow
                             key={roundNum}
-                            className="border-slate-600 cursor-pointer hover:bg-slate-700/50"
+                            className="border-zinc-800/50 active:bg-zinc-800"
                             onClick={() => handleRowClick(roundNum)}
                         >
-                            <TableCell className="w-10 text-center text-gray-400 font-mono">
+                            <TableCell className="w-10 text-center text-zinc-500 font-mono text-xs">
                                 {roundNum}
                             </TableCell>
                             {playerEntries.map(([id, player]) => (
-                                <TableCell key={id} className="text-right font-mono px-3 text-gray-200">
+                                <TableCell key={id} className="text-right font-mono px-3 text-zinc-300 text-sm">
                                     {player.scores[roundNum] || 0}
                                 </TableCell>
                             ))}
                         </TableRow>
                     ))}
-                    {/* Total row */}
-                    <TableRow className="border-slate-600 bg-slate-700/50">
-                        <TableCell className="w-10 text-center text-gray-400 font-bold">Σ</TableCell>
+                    <TableRow className="border-zinc-800 bg-zinc-800/30 hover:bg-zinc-800/30">
+                        <TableCell className="w-10 text-center text-zinc-500 font-bold text-xs">Σ</TableCell>
                         {totals.map((total, i) => (
-                            <TableCell key={i} className="text-right font-mono font-bold px-3 text-white">
+                            <TableCell key={i} className="text-right font-mono font-bold px-3 text-white text-sm">
                                 {total}
                             </TableCell>
                         ))}

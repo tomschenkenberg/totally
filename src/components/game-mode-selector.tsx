@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,7 +20,7 @@ import {
     GameMode
 } from "@/lib/atoms/game"
 import { useRouter } from "next/navigation"
-import { Spade, Calculator, Crown } from "lucide-react"
+import { Spade, Calculator, Crown, ChevronRight } from "lucide-react"
 import { useState } from "react"
 
 const GAME_MODE_LABELS: Record<GameMode, string> = {
@@ -41,10 +40,8 @@ export function GameModeSelector() {
     const [pendingSelection, setPendingSelection] = useState<GameMode | null>(null)
 
     const executeSelection = (mode: GameMode) => {
-        // Reset any existing games
         resetBoerenBridge()
         resetSchoppenvrouwen()
-
         setGameMode(mode)
         switch (mode) {
             case "boerenbridge":
@@ -60,14 +57,11 @@ export function GameModeSelector() {
     }
 
     const handleSelectGame = (mode: GameMode) => {
-        // If there's an active game in a DIFFERENT mode, show confirmation
         if (activeGame.active && activeGame.mode !== mode) {
             setPendingSelection(mode)
             setShowConfirmDialog(true)
             return
         }
-
-        // No active game or same mode - proceed directly
         executeSelection(mode)
     }
 
@@ -86,94 +80,77 @@ export function GameModeSelector() {
 
     return (
         <>
-            <div className="flex flex-col gap-6">
-                {/* Card Games Section */}
-                <Card
-                    className="cursor-pointer border-2 border-slate-600 bg-slate-800 hover:border-emerald-500 hover:bg-slate-700 transition-all"
+            <div className="flex flex-col gap-3">
+                <button
                     onClick={() => handleSelectGame("boerenbridge")}
+                    className="group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-left transition-all active:scale-[0.98] hover:border-emerald-500/50 hover:bg-zinc-900/80"
                 >
-                    <CardHeader className="pb-2">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-emerald-500/20">
-                                <Spade className="h-6 w-6 text-emerald-400" />
-                            </div>
-                            <CardTitle className="text-2xl text-gray-100">Boerenbridge</CardTitle>
+                    <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 to-transparent" />
+                    <div className="relative flex items-center gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
+                            <Spade className="h-6 w-6 text-emerald-400" />
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <CardDescription className="text-gray-400 text-base">
-                            10 → 1 → 10 kaarten, bieden op slagen, bonus voor juiste voorspelling
-                        </CardDescription>
-                        <Button variant="default" className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700">
-                            Start Boerenbridge
-                        </Button>
-                    </CardContent>
-                </Card>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-lg font-semibold text-white">Boerenbridge</div>
+                            <div className="text-sm text-zinc-500 mt-0.5">
+                                10 → 1 → 10 kaarten, bieden op slagen
+                            </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-zinc-600 group-hover:text-emerald-400 transition-colors shrink-0" />
+                    </div>
+                </button>
 
-                <Card
-                    className="cursor-pointer border-2 border-slate-600 bg-slate-800 hover:border-rose-500 hover:bg-slate-700 transition-all"
+                <button
                     onClick={() => handleSelectGame("schoppenvrouwen")}
+                    className="group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-left transition-all active:scale-[0.98] hover:border-rose-500/50 hover:bg-zinc-900/80"
                 >
-                    <CardHeader className="pb-2">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-rose-500/20">
-                                <Crown className="h-6 w-6 text-rose-400" />
-                            </div>
-                            <CardTitle className="text-2xl text-gray-100">Schoppenvrouwen</CardTitle>
+                    <div className="absolute inset-0 bg-linear-to-br from-rose-500/5 to-transparent" />
+                    <div className="relative flex items-center gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 ring-1 ring-rose-500/20">
+                            <Crown className="h-6 w-6 text-rose-400" />
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <CardDescription className="text-gray-400 text-base">
-                            Eerste tot 1000 punten wint. 13 kaarten per speler uit 2 decks.
-                        </CardDescription>
-                        <Button variant="default" className="w-full mt-4 bg-rose-600 hover:bg-rose-700">
-                            Start Schoppenvrouwen
-                        </Button>
-                    </CardContent>
-                </Card>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-lg font-semibold text-white">Schoppenvrouwen</div>
+                            <div className="text-sm text-zinc-500 mt-0.5">
+                                Eerste tot 1000 punten wint
+                            </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-zinc-600 group-hover:text-rose-400 transition-colors shrink-0" />
+                    </div>
+                </button>
 
-                {/* Separator */}
-                <div className="flex items-center gap-4 py-2">
-                    <div className="h-px flex-1 bg-slate-600" />
-                    <span className="text-sm text-slate-500 uppercase tracking-wider">of gebruik</span>
-                    <div className="h-px flex-1 bg-slate-600" />
+                <div className="flex items-center gap-3 py-3">
+                    <div className="h-px flex-1 bg-zinc-800" />
+                    <span className="text-xs text-zinc-600 uppercase tracking-widest">of</span>
+                    <div className="h-px flex-1 bg-zinc-800" />
                 </div>
 
-                {/* Generic Scorekeeper - Less prominent */}
-                <Card
-                    className="cursor-pointer border border-slate-700 bg-slate-800/50 hover:border-slate-500 hover:bg-slate-700/50 transition-all"
+                <button
                     onClick={() => handleSelectGame("generic")}
+                    className="group relative overflow-hidden rounded-2xl border border-zinc-800/60 bg-zinc-900/50 p-4 text-left transition-all active:scale-[0.98] hover:border-zinc-700 hover:bg-zinc-900/80"
                 >
-                    <CardHeader className="pb-2">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-slate-600/50">
-                                <Calculator className="h-5 w-5 text-slate-400" />
-                            </div>
-                            <CardTitle className="text-lg text-gray-300">Vrije Scorekeeper</CardTitle>
+                    <div className="relative flex items-center gap-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700">
+                            <Calculator className="h-5 w-5 text-zinc-400" />
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <CardDescription className="text-gray-500 text-sm">
-                            Algemene scorekeeper voor elk spel - voer handmatig scores in per ronde
-                        </CardDescription>
-                        <Button
-                            variant="outline"
-                            className="w-full mt-3 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-                        >
-                            Start Vrije Scorekeeper
-                        </Button>
-                    </CardContent>
-                </Card>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-base font-medium text-zinc-300">Vrije Scorekeeper</div>
+                            <div className="text-sm text-zinc-600 mt-0.5">
+                                Handmatig scores per ronde
+                            </div>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-zinc-700 group-hover:text-zinc-400 transition-colors shrink-0" />
+                    </div>
+                </button>
             </div>
 
-            {/* Confirmation Dialog */}
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <AlertDialogContent className="bg-slate-800 border-slate-600">
+                <AlertDialogContent className="bg-zinc-900 border-zinc-800 max-w-[calc(100vw-2rem)]">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-white text-xl">
                             Actief spel overschrijven?
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-300 text-base">
+                        <AlertDialogDescription className="text-zinc-400 text-base">
                             Je hebt nog een actief{" "}
                             <span className="font-bold text-white">
                                 {activeGame.mode ? GAME_MODE_LABELS[activeGame.mode] : ""}
@@ -184,7 +161,7 @@ export function GameModeSelector() {
                     <AlertDialogFooter className="gap-2">
                         <AlertDialogCancel
                             onClick={handleCancelSwitch}
-                            className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                            className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
                         >
                             Annuleren
                         </AlertDialogCancel>

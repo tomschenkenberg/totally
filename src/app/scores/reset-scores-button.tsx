@@ -20,7 +20,6 @@ export function ResetScoresButton() {
 
     const handleReset = async () => {
         setPlayers((prevPlayers) => {
-            // Create new object with same players but empty scores
             const resetPlayers = Object.fromEntries(
                 Object.entries(prevPlayers).map(([id, player]) => [id, { ...player, scores: {} }])
             )
@@ -31,18 +30,18 @@ export function ResetScoresButton() {
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="text-xl w-full sm:w-auto">
+                <Button variant="destructive" className="w-full h-12 text-lg rounded-xl">
                     Reset Scores
                 </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="bg-zinc-900 border-zinc-800 max-w-[calc(100vw-2rem)]">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                    <AlertDialogTitle className="text-white">Weet je het zeker?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-zinc-400">Dit kan niet ongedaan worden gemaakt.</AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
+                <AlertDialogFooter className="gap-2">
+                    <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">Annuleren</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleReset} className="bg-red-600 hover:bg-red-700 text-white">Reset</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

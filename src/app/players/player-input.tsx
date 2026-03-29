@@ -27,10 +27,10 @@ const GenderButton = ({
         type="button"
         onClick={() => onClick(value)}
         className={cn(
-            "px-3 py-1 text-sm font-medium rounded-md transition-colors",
+            "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
             selected
                 ? "bg-emerald-600 text-white"
-                : "bg-slate-700 text-gray-300 hover:bg-slate-600"
+                : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 active:bg-zinc-600"
         )}
     >
         {label}
@@ -85,7 +85,7 @@ const PlayerInput = ({ id, placeholder }: PlayerInputProps) => {
         <div className="space-y-2">
             <div className="relative">
                 <Input
-                    className="text-xl font-semibold p-3 font-mono pr-10"
+                    className="text-lg font-semibold p-3 h-12 font-mono pr-10 bg-zinc-900 border-zinc-800 rounded-xl focus:border-zinc-600"
                     id={`player-input-${id}`}
                     placeholder={placeholder}
                     value={playerName}
@@ -95,7 +95,7 @@ const PlayerInput = ({ id, placeholder }: PlayerInputProps) => {
                 {playerName && (
                     <button
                         onClick={handleClear}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 p-1"
                     >
                         <Cross1Icon />
                     </button>
@@ -103,7 +103,7 @@ const PlayerInput = ({ id, placeholder }: PlayerInputProps) => {
             </div>
             {playerName && (
                 <div className="flex items-center gap-2 pl-1">
-                    <span className="text-sm text-gray-400">Geslacht:</span>
+                    <span className="text-xs text-zinc-500">Geslacht:</span>
                     <div className="flex gap-1">
                         <GenderButton
                             selected={playerGender === "m"}

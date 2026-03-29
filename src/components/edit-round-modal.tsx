@@ -7,7 +7,7 @@ import {
     setBidForRoundAtom,
     setTricksForRoundAtom,
     calculateBoerenBridgeScore,
-    BOEREN_BRIDGE_ROUNDS
+    boerenBridgeBidsSumEqualsCards
 } from "@/lib/atoms/game"
 import {
     Sheet,
@@ -40,9 +40,12 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
     const cards = round.cards
     const playerOrder = game.playerOrder
 
-    // Calculate total tricks
     const totalTricks = Object.values(round.tricks).reduce((sum, t) => sum + t, 0)
     const totalTricksValid = totalTricks === cards
+
+    const allBidsEntered = playerOrder.every((id) => round.bids[id] !== undefined)
+    const sumBids = Object.values(round.bids).reduce((s, b) => s + b, 0)
+    const bidsSumInvalid = allBidsEntered && boerenBridgeBidsSumEqualsCards(round, cards, playerOrder.length)
 
     const handleBid = (playerId: number, bid: number) => {
         setBidForRound({ roundIndex, playerId, bid })
@@ -54,46 +57,51 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-zinc-950 border-zinc-800">
                 <SheetHeader>
-                    <SheetTitle className="text-2xl">
+                    <SheetTitle className="text-xl text-white">
                         Ronde {roundIndex + 1} bewerken
                     </SheetTitle>
-                    <SheetDescription>
+                    <SheetDescription className="text-zinc-500">
                         {cards} {cards === 1 ? "kaart" : "kaarten"}
                     </SheetDescription>
                 </SheetHeader>
 
-                <div className="mt-6 space-y-6">
-                    {/* Validation warning */}
-                    {!totalTricksValid && (
-                        <div className="flex flex-col items-center gap-3 text-red-300 bg-red-900/40 border border-red-500/50 p-4 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <AlertTriangle className="h-6 w-6 text-red-400" />
-                                <span className="text-base font-bold">
-                                    Totaal slagen ({totalTricks}) moet {cards} zijn
-                                </span>
-                            </div>
+                <div className="mt-6 space-y-4">
+                    {bidsSumInvalid && (
+                        <div className="flex items-center gap-2 text-red-300 bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-sm">
+                            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+                            <span className="font-semibold">
+                                Totaal geboden ({sumBids}) mag niet precies {cards} zijn
+                            </span>
                         </div>
                     )}
 
-                    {/* Progress info */}
-                    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+                    {!totalTricksValid && (
+                        <div className="flex items-center gap-2 text-red-300 bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-sm">
+                            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+                            <span className="font-semibold">
+                                Totaal slagen ({totalTricks}) moet {cards} zijn
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="rounded-xl bg-zinc-900 border border-zinc-800 p-3">
                         <div className="flex justify-center items-center">
-                            <span className="text-gray-300 font-medium">Totaal slagen:</span>
+                            <span className="text-sm text-zinc-400">Totaal slagen:</span>
                             <span
                                 className={cn(
-                                    "ml-3 text-2xl font-bold",
+                                    "ml-2 text-xl font-bold font-mono",
                                     totalTricksValid ? "text-emerald-400" : "text-red-400"
                                 )}
                             >
-                                {totalTricks} / {cards}
+                                {totalTricks}
                             </span>
+                            <span className="text-zinc-600 font-mono ml-1">/ {cards}</span>
                         </div>
                     </div>
 
-                    {/* Players list */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {playerOrder.map((playerId) => {
                             const player = players[playerId]
                             const bid = round.bids[playerId]
@@ -106,21 +114,20 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                             return (
                                 <div
                                     key={playerId}
-                                    className="bg-slate-800 rounded-lg p-4 border border-slate-600 space-y-4"
+                                    className="rounded-xl bg-zinc-900 border border-zinc-800 p-4 space-y-3"
                                 >
-                                    {/* Player header */}
                                     <div className="flex items-center gap-3">
-                                        <span className="font-bold text-lg text-white">{player.name}</span>
+                                        <span className="font-semibold text-white">{player.name}</span>
                                         {hasBid && hasTricks && (
-                                            <div className="flex items-center gap-2 ml-auto">
+                                            <div className="flex items-center gap-1.5 ml-auto">
                                                 {isCorrect ? (
-                                                    <Check className="h-5 w-5 text-emerald-400" />
+                                                    <Check className="h-4 w-4 text-emerald-400" />
                                                 ) : (
-                                                    <X className="h-5 w-5 text-red-400" />
+                                                    <X className="h-4 w-4 text-red-400" />
                                                 )}
                                                 <span
                                                     className={cn(
-                                                        "font-bold font-mono text-xl",
+                                                        "font-bold font-mono text-lg",
                                                         score !== null && score > 0
                                                             ? "text-emerald-400"
                                                             : "text-red-400"
@@ -133,10 +140,9 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                                         )}
                                     </div>
 
-                                    {/* Bid section */}
                                     <div>
-                                        <div className="text-sm text-gray-400 mb-2">Bod:</div>
-                                        <div className="grid grid-cols-4 gap-2">
+                                        <div className="text-xs text-zinc-500 mb-1.5 uppercase tracking-wider">Bod</div>
+                                        <div className="grid grid-cols-4 gap-1.5">
                                             {Array.from({ length: cards + 1 }, (_, i) => i).map((bidValue) => (
                                                 <Button
                                                     key={bidValue}
@@ -144,9 +150,10 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                                                     variant={bid === bidValue ? "default" : "outline"}
                                                     size="sm"
                                                     className={cn(
+                                                        "h-9 rounded-lg text-sm",
                                                         bid === bidValue
                                                             ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                            : ""
+                                                            : "border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                                                     )}
                                                 >
                                                     {bidValue}
@@ -155,10 +162,9 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                                         </div>
                                     </div>
 
-                                    {/* Tricks section */}
                                     <div>
-                                        <div className="text-sm text-gray-400 mb-2">Slagen:</div>
-                                        <div className="grid grid-cols-4 gap-2">
+                                        <div className="text-xs text-zinc-500 mb-1.5 uppercase tracking-wider">Slagen</div>
+                                        <div className="grid grid-cols-4 gap-1.5">
                                             {Array.from({ length: cards + 1 }, (_, i) => i).map((tricksValue) => (
                                                 <Button
                                                     key={tricksValue}
@@ -166,9 +172,10 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                                                     variant={tricks === tricksValue ? "default" : "outline"}
                                                     size="sm"
                                                     className={cn(
+                                                        "h-9 rounded-lg text-sm",
                                                         tricks === tricksValue
                                                             ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                                            : ""
+                                                            : "border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                                                     )}
                                                 >
                                                     {tricksValue}
@@ -185,4 +192,3 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
         </Sheet>
     )
 }
-

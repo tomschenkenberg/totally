@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "@/styles/globals.css"
 import { Providers } from "@/components/providers"
-import { Footer } from "@/components/footer"
 import { MainMenu } from "@/components/main-menu"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -14,25 +13,24 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-    themeColor: "#1E293B",
+    themeColor: "#09090b",
     initialScale: 1,
     width: "device-width",
-    height: "device-height"
+    height: "device-height",
+    viewportFit: "cover"
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" className="dark">
             <head />
-            <body className={`min-h-screen flex flex-col ${inter.className} bg-slate-800 text-gray-200`}>
+            <body className={`min-h-dvh flex flex-col ${inter.className} bg-zinc-950 text-zinc-100 antialiased`}>
                 <Providers>
-                    <header className=" bg-slate-800 py-2">
-                        <MainMenu />
-                    </header>
-                    <main className="mx-auto w-full flex-grow bg-slate-700 p-2 sm:p-4 md:p-6 space-y-6 sm:max-w-[350px] lg:max-w-[700px] xl:max-w-[1000px] ">
+                    <MainMenu />
+                    <main className="mx-auto w-full max-w-lg grow px-4 py-5 space-y-5">
                         {children}
                     </main>
-                    <Footer />
+                    <div className="h-6 shrink-0" />
                 </Providers>
             </body>
         </html>

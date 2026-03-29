@@ -19,12 +19,23 @@ interface GameState {
     totalRounds?: number
     targetScore?: number
     gameMode: "generic" | "boerenbridge" | "schoppenvrouwen"
+    /** Generic mode: round key per roundScores index (sorted union across players). */
+    roundNumbers?: number[]
 }
 
 export async function generateStandUpdate(gameState: GameState) {
     const stream = createStreamableValue("")
 
-    const { players, currentRound, totalRounds, targetScore, gameMode } = gameState
+    const { players, currentRound, totalRounds, targetScore, gameMode, roundNumbers } = gameState
+
+    if (players.length === 0) {
+        const stream = createStreamableValue("")
+        stream.done()
+        return { output: stream.value }
+    }
+
+    const roundLabel = (idx: number) =>
+        roundNumbers !== undefined && roundNumbers[idx] !== undefined ? roundNumbers[idx]! : idx + 1
 
     // Sort players by score descending
     const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
@@ -44,22 +55,28 @@ export async function generateStandUpdate(gameState: GameState) {
     const coldPlayer = recentPerformance.reduce((a, b) => (b.avg < a.avg ? b : a))
 
     // Build complete round history
-    const numRounds = Math.max(...players.map((p) => p.roundScores.length))
+    const numRounds = Math.max(0, ...players.map((p) => p.roundScores.length))
+    if (numRounds === 0) {
+        const stream = createStreamableValue("")
+        stream.done()
+        return { output: stream.value }
+    }
+
     const roundHistory: string[] = []
-    
+
     for (let r = 0; r < numRounds; r++) {
         const roundScores = players
             .map((p) => `${p.name}: ${p.roundScores[r] !== undefined ? (p.roundScores[r] > 0 ? "+" : "") + p.roundScores[r] : "-"}`)
             .join(", ")
-        
+
         // Calculate running totals after this round
         const runningTotals = players.map((p) => ({
             name: p.name,
             total: p.roundScores.slice(0, r + 1).reduce((a, b) => a + b, 0)
         }))
         const leaderAfterRound = runningTotals.sort((a, b) => b.total - a.total)[0]
-        
-        roundHistory.push(`Ronde ${r + 1}: ${roundScores} → Leider: ${leaderAfterRound.name} (${leaderAfterRound.total})`)
+
+        roundHistory.push(`Ronde ${roundLabel(r)}: ${roundScores} → Leider: ${leaderAfterRound.name} (${leaderAfterRound.total})`)
     }
 
     // Find biggest swing (best single round)
@@ -69,10 +86,10 @@ export async function generateStandUpdate(gameState: GameState) {
     players.forEach((p) => {
         p.roundScores.forEach((score, idx) => {
             if (score > bestRound.score) {
-                bestRound = { name: p.name, round: idx + 1, score }
+                bestRound = { name: p.name, round: roundLabel(idx), score }
             }
             if (score < worstRound.score) {
-                worstRound = { name: p.name, round: idx + 1, score }
+                worstRound = { name: p.name, round: roundLabel(idx), score }
             }
         })
     })
@@ -155,7 +172,7 @@ Dit was ronde ${currentRound}. De leider ${leader.name} heeft nog ${pointsToWin}
         const leaderAfterRound = runningTotals.sort((a, b) => b.total - a.total)[0]
         if (leaderAfterRound.name !== previousLeader) {
             if (previousLeader) {
-                leadChanges.push(`Ronde ${r + 1}: ${leaderAfterRound.name} pakt de leiding over van ${previousLeader}`)
+                leadChanges.push(`Ronde ${roundLabel(r)}: ${leaderAfterRound.name} pakt de leiding over van ${previousLeader}`)
             }
             previousLeader = leaderAfterRound.name
         }

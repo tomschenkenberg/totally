@@ -39,45 +39,34 @@ export default function TricksPage() {
         playerId: number
     } | null>(null)
 
-    // Wait for hydration
     useEffect(() => {
         setIsHydrated(true)
     }, [])
 
-    // Reset player index when round number changes or when entering tricks phase
     useEffect(() => {
         if (!isHydrated || !game || !currentRound) return
-        
-        // Find the first player who hasn't entered tricks yet
         const playerOrder = game.playerOrder
         const firstPlayerWithoutTricks = playerOrder.findIndex(
             (playerId) => currentRound.tricks[playerId] === undefined
         )
-        
         if (firstPlayerWithoutTricks !== -1) {
             setCurrentPlayerIndex(firstPlayerWithoutTricks)
         } else {
-            // All players have tricks, start from beginning
             setCurrentPlayerIndex(0)
         }
         setEditingPlayerId(null)
     }, [roundNumber, isHydrated, game, currentRound])
 
-    // Redirect if no game or wrong round (only after hydration and data loaded)
     useEffect(() => {
         if (!isHydrated || !game || !currentRound) return
-        if (autoAdvanceRef.current) return // Don't redirect if auto-advancing
-        
-        // Don't redirect if tricks are complete - we're navigating to scoreboard
+        if (autoAdvanceRef.current) return
         const tricksComplete = Object.keys(currentRound.tricks).length === game.playerOrder.length
         if (tricksComplete) return
-        
         if (roundNumber !== game.currentRoundIndex + 1) {
             router.replace(`/boerenbridge/round/${game.currentRoundIndex + 1}/tricks`)
         }
     }, [game, currentRound, roundNumber, router, isHydrated])
 
-    // Redirect to setup if no game
     useEffect(() => {
         if (!isHydrated) return
         if (!game) {
@@ -85,94 +74,70 @@ export default function TricksPage() {
         }
     }, [isHydrated, game, router])
 
-    // Calculate values safely (even if game/currentRound is null)
     const playerOrder = game?.playerOrder ?? []
     const currentPlayerId = playerOrder[currentPlayerIndex]
     const currentPlayer = currentPlayerId ? players[currentPlayerId] : null
 
-    // Calculate total tricks so far
     const totalTricks = currentRound ? Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0) : 0
-
-    // Check if all tricks are recorded
     const allTricksComplete = currentRound ? Object.keys(currentRound.tricks).length === playerOrder.length : false
-
-    // Validate total tricks equals cards
     const totalTricksValid = totalTricks === cards
-
-    // Is this the last round?
     const isLastRound = game ? game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1 : false
 
-    // Get the player being edited or currently entering
     const activePlayerId = editingPlayerId ?? currentPlayerId
     const activePlayerForEdit = activePlayerId ? players[activePlayerId] : null
     const isEditing = editingPlayerId !== null
 
-    // Ref to track if we've already started auto-advancing (used in handleTricks)
     const autoAdvanceRef = useRef(false)
 
     if (!isHydrated || !game || !currentRound) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-gray-400">Laden...</div>
+            <div className="flex items-center justify-center py-16">
+                <div className="text-zinc-500">Laden...</div>
             </div>
         )
     }
 
-    // Show loading state when auto-advancing to scoreboard
-    // This prevents visual glitch when round advances but navigation hasn't happened yet
     if (isAutoAdvancing) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <span className="animate-pulse text-xl font-bold text-emerald-400">Naar scorebord...</span>
+            <div className="flex items-center justify-center py-16">
+                <span className="animate-pulse text-lg font-bold text-emerald-400">Naar scorebord...</span>
             </div>
         )
     }
 
-    // Recalculate after early return when we know game/currentRound are available
     const safePlayerOrder = game.playerOrder
-    // Find first player without tricks
     const firstPlayerWithoutTricksIndex = safePlayerOrder.findIndex(
         (playerId) => currentRound.tricks[playerId] === undefined
     )
-    // Use the first player without tricks, or first player if all have tricks
     const targetPlayerIndex = firstPlayerWithoutTricksIndex !== -1 ? firstPlayerWithoutTricksIndex : 0
-    // Ensure targetPlayerIndex is within bounds
     const safeTargetPlayerIndex = targetPlayerIndex >= 0 && targetPlayerIndex < safePlayerOrder.length ? targetPlayerIndex : 0
-    // Use editing player ID if editing, otherwise use target player, with fallback to first player
-    // Always ensure we have a valid player ID
+
     let safeActivePlayerId: number | null = null
     if (editingPlayerId !== null) {
         safeActivePlayerId = editingPlayerId
     } else if (safePlayerOrder.length > 0) {
-        // Try target player index first
         if (safeTargetPlayerIndex >= 0 && safeTargetPlayerIndex < safePlayerOrder.length) {
             safeActivePlayerId = safePlayerOrder[safeTargetPlayerIndex]
         }
-        // Fallback to first player if target index didn't work
         if (safeActivePlayerId === null || safeActivePlayerId === undefined) {
             safeActivePlayerId = safePlayerOrder[0]
         }
     }
-    // Ensure we always have a valid player
-    const activePlayer = safeActivePlayerId && players[safeActivePlayerId] 
-        ? players[safeActivePlayerId] 
+    const activePlayer = safeActivePlayerId && players[safeActivePlayerId]
+        ? players[safeActivePlayerId]
         : (safePlayerOrder.length > 0 && players[safePlayerOrder[0]] ? players[safePlayerOrder[0]] : null)
-    
-    // Recalculate completion status with safe values
+
     const tricksEntered = Object.keys(currentRound.tricks).length
     const safeAllTricksComplete = tricksEntered === safePlayerOrder.length
     const safeTotalTricks = Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0)
     const safeTotalTricksValid = safeTotalTricks === cards
     const needsTricksInput = tricksEntered < safePlayerOrder.length
 
-    // Calculate how many players still need to enter tricks
     const playersWithoutTricks = safePlayerOrder.filter(
         (playerId) => currentRound.tricks[playerId] === undefined
     )
     const isLastPlayer = playersWithoutTricks.length === 1 && !isEditing
-    
-    // Calculate remaining tricks for last player
-    // When editing, exclude the edited player's tricks from the total
+
     const tricksWithoutCurrentPlayer = isEditing && editingPlayerId !== null
         ? Object.entries(currentRound.tricks)
             .filter(([id]) => Number(id) !== editingPlayerId)
@@ -185,17 +150,14 @@ export default function TricksPage() {
         if (safeActivePlayerId === null) return
 
         setSubmittingTricks({ tricks, playerId: safeActivePlayerId })
-
-        // Show feedback for a short moment
         await new Promise((resolve) => setTimeout(resolve, 750))
 
-        // Calculate if this trick will complete the round
         let newTotal: number
         let newCount: number
 
         if (editingPlayerId !== null) {
             newTotal = safeTotalTricks - (currentRound.tricks[editingPlayerId] || 0) + tricks
-            newCount = tricksEntered // editing doesn't change count
+            newCount = tricksEntered
         } else {
             newTotal = safeTotalTricks + tricks
             newCount = tricksEntered + 1
@@ -205,29 +167,23 @@ export default function TricksPage() {
         const willBeValid = newTotal === cards
         const isLast = game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1
 
-        // If this completes the round, set loading state BEFORE the state update
-        // This prevents any flash of the completed state
         if (willBeComplete && willBeValid && !autoAdvanceRef.current) {
             autoAdvanceRef.current = true
             setIsAutoAdvancing(true)
 
-            // Schedule advance + navigation after the state update is processed
             queueMicrotask(() => {
                 if (!isLast) {
                     advanceToNextRound()
                 }
-                // Navigate immediately - no delay needed since we already show loading state
                 router.replace("/boerenbridge")
             })
         }
 
-        // Now update the tricks
         if (editingPlayerId !== null) {
             setTricks({ playerId: editingPlayerId, tricks })
             setEditingPlayerId(null)
         } else if (safeActivePlayerId !== null) {
             setTricks({ playerId: safeActivePlayerId, tricks })
-            // Move to next player without tricks
             const currentIdx = safePlayerOrder.indexOf(safeActivePlayerId)
             const nextPlayerIndex = safePlayerOrder.findIndex(
                 (playerId, idx) =>
@@ -254,18 +210,16 @@ export default function TricksPage() {
 
     return (
         <>
-            <Title>
-                Slagen - {cards} kaarten
-            </Title>
+            <Title>Slagen - {cards} kaarten</Title>
 
-            <div className="space-y-6">
-                {/* Progress info */}
-                <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+            <div className="space-y-4">
+                {/* Progress */}
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-3">
                     <div className="flex justify-center items-center">
-                        <span className="text-gray-300 font-medium text-lg">Ingevoerd:</span>
+                        <span className="text-zinc-400 text-sm">Ingevoerd:</span>
                         <span
                             className={cn(
-                                "ml-3 text-3xl font-bold",
+                                "ml-2 text-2xl font-bold font-mono",
                                 safeAllTricksComplete && safeTotalTricksValid
                                     ? "text-emerald-400"
                                     : safeAllTricksComplete && !safeTotalTricksValid
@@ -273,58 +227,48 @@ export default function TricksPage() {
                                       : "text-white"
                             )}
                         >
-                            {safeTotalTricks} / {cards}
+                            {safeTotalTricks}
                         </span>
+                        <span className="text-zinc-600 text-lg font-mono ml-1">/ {cards}</span>
                     </div>
                 </div>
 
                 {/* Validation warning */}
                 {safeAllTricksComplete && !safeTotalTricksValid && !isEditing && (
-                    <div className="flex flex-col items-center gap-3 text-red-300 bg-red-900/40 border border-red-500/50 p-4 rounded-lg">
-                        <div className="flex items-center gap-3">
-                            <AlertTriangle className="h-8 w-8 text-red-400" />
-                            <span className="text-lg font-bold">
-                                Totaal slagen ({safeTotalTricks}) moet {cards} zijn
-                            </span>
+                    <div className="flex items-center gap-2 text-red-300 bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                        <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
+                        <div className="text-sm">
+                            <span className="font-semibold">Totaal slagen ({safeTotalTricks}) moet {cards} zijn.</span>
+                            <span className="text-red-400/70 block">Tik op een speler om aan te passen</span>
                         </div>
-                        <span className="text-base font-medium">
-                            Klik op een speler hieronder om aan te passen
-                        </span>
                     </div>
                 )}
 
-                {/* Current player input - show when entering new OR editing */}
+                {/* Current player input */}
                 {(needsTricksInput || isEditing) && activePlayer && safeActivePlayerId !== null && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-center gap-4">
-                            <div className="flex flex-col items-center">
-                                <span className="text-3xl font-bold text-white">
-                                    {activePlayer.name}
-                                </span>
-                                <span className="text-gray-300 text-lg">
-                                    (geboden: <span className="text-emerald-400 font-bold">{currentRound.bids[safeActivePlayerId] ?? 0}</span>)
-                                </span>
+                        <div className="text-center">
+                            <div className="flex items-center justify-center gap-3">
+                                <span className="text-2xl font-bold text-white">{activePlayer.name}</span>
+                                {isEditing && (
+                                    <span className="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full font-semibold ring-1 ring-amber-500/30">Aanpassen</span>
+                                )}
                             </div>
-                            {isEditing && (
-                                <span className="text-sm bg-amber-600 text-white px-3 py-1 rounded font-bold self-start">Aanpassen</span>
-                            )}
+                            <span className="text-sm text-zinc-500">
+                                geboden: <span className="text-emerald-400 font-bold">{currentRound.bids[safeActivePlayerId] ?? 0}</span>
+                            </span>
                         </div>
 
-                        {/* Tricks buttons */}
                         {isLastPlayer ? (
                             <div className="space-y-3">
-                                <div className="text-center text-amber-300 text-lg font-medium">
+                                <div className="text-center text-amber-400/80 text-sm font-medium">
                                     Resterende slagen:{" "}
-                                    <span className="font-bold text-2xl">{remainingTricks}</span>
+                                    <span className="font-bold text-xl text-amber-400">{remainingTricks}</span>
                                 </div>
                                 {(() => {
-                                    const isMyTurnSubmitting =
-                                        submittingTricks?.playerId === safeActivePlayerId
-                                    const isSelected =
-                                        isMyTurnSubmitting &&
-                                        submittingTricks?.tricks === remainingTricks
-                                    const isSubmittingOther =
-                                        isMyTurnSubmitting && !isSelected
+                                    const isMyTurnSubmitting = submittingTricks?.playerId === safeActivePlayerId
+                                    const isSelected = isMyTurnSubmitting && submittingTricks?.tricks === remainingTricks
+                                    const isSubmittingOther = isMyTurnSubmitting && !isSelected
 
                                     return (
                                         <Button
@@ -332,15 +276,15 @@ export default function TricksPage() {
                                             variant="default"
                                             disabled={isSubmittingOther || isSelected}
                                             className={cn(
-                                                "w-full text-4xl font-bold py-12 transition-all duration-300 transform",
+                                                "w-full text-3xl font-bold h-20 rounded-xl transition-all duration-200",
                                                 isSelected
-                                                    ? "bg-green-500 hover:bg-green-600 scale-105 ring-4 ring-green-300 text-white"
+                                                    ? "bg-green-500 hover:bg-green-600 scale-105 ring-2 ring-green-400/50 text-white"
                                                     : "bg-emerald-600 hover:bg-emerald-700 text-white",
-                                                isSubmittingOther && "opacity-50 scale-95"
+                                                isSubmittingOther && "opacity-40 scale-95"
                                             )}
                                         >
                                             {isSelected ? (
-                                                <Check className="w-12 h-12 animate-bounce" />
+                                                <Check className="w-10 h-10 animate-bounce" />
                                             ) : (
                                                 remainingTricks
                                             )}
@@ -349,49 +293,42 @@ export default function TricksPage() {
                                 })()}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                {Array.from({ length: cards + 1 }, (_, i) => i).map(
-                                    (tricks) => {
-                                        const isMyTurnSubmitting =
-                                            submittingTricks?.playerId === safeActivePlayerId
-                                        const isSelected =
-                                            isMyTurnSubmitting &&
-                                            submittingTricks?.tricks === tricks
-                                        const isSubmittingOther =
-                                            isMyTurnSubmitting && !isSelected
+                            <div className="grid grid-cols-4 gap-2">
+                                {Array.from({ length: cards + 1 }, (_, i) => i).map((tricks) => {
+                                    const isMyTurnSubmitting = submittingTricks?.playerId === safeActivePlayerId
+                                    const isSelected = isMyTurnSubmitting && submittingTricks?.tricks === tricks
+                                    const isSubmittingOther = isMyTurnSubmitting && !isSelected
 
-                                        return (
-                                            <Button
-                                                key={tricks}
-                                                onClick={() => handleTricks(tricks)}
-                                                variant="default"
-                                                disabled={isSubmittingOther || isSelected}
-                                                className={cn(
-                                                    "text-3xl font-bold py-8 transition-all duration-300 transform",
-                                                    isSelected
-                                                        ? "bg-green-500 hover:bg-green-600 scale-105 ring-4 ring-green-300 text-white"
-                                                        : isEditing
-                                                          ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                                          : "bg-slate-600 hover:bg-slate-500 text-white",
-                                                    isSubmittingOther && "opacity-50 scale-95"
-                                                )}
-                                            >
-                                                {isSelected ? (
-                                                    <Check className="w-8 h-8 animate-bounce" />
-                                                ) : (
-                                                    tricks
-                                                )}
-                                            </Button>
-                                        )
-                                    }
-                                )}
+                                    return (
+                                        <Button
+                                            key={tricks}
+                                            onClick={() => handleTricks(tricks)}
+                                            variant="default"
+                                            disabled={isSubmittingOther || isSelected}
+                                            className={cn(
+                                                "text-2xl font-bold h-16 rounded-xl transition-all duration-200",
+                                                isSelected
+                                                    ? "bg-green-500 hover:bg-green-600 scale-105 ring-2 ring-green-400/50 text-white"
+                                                    : isEditing
+                                                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                                      : "bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-white border border-zinc-700",
+                                                isSubmittingOther && "opacity-40 scale-95"
+                                            )}
+                                        >
+                                            {isSelected ? (
+                                                <Check className="w-7 h-7 animate-bounce" />
+                                            ) : (
+                                                tricks
+                                            )}
+                                        </Button>
+                                    )
+                                })}
                             </div>
                         )}
 
-                        {/* Back/Cancel button */}
                         {(safeTargetPlayerIndex > 0 || isEditing) && (
-                            <Button variant="ghost" onClick={handleBack} className="w-full text-gray-400 text-lg py-4">
-                                {isEditing ? "✕ Annuleren" : "← Vorige speler"}
+                            <Button variant="ghost" onClick={handleBack} className="w-full text-zinc-500 h-12 rounded-xl">
+                                {isEditing ? "Annuleren" : "← Vorige speler"}
                             </Button>
                         )}
                     </div>
@@ -399,78 +336,72 @@ export default function TricksPage() {
 
                 {/* Results summary */}
                 <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-gray-200">
+                    <h3 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider px-1">
                         Resultaten
                         {safeAllTricksComplete && (
-                            <span className="text-sm font-normal text-gray-400 ml-2">
-                                (klik om aan te passen)
+                            <span className="normal-case tracking-normal font-normal text-zinc-600 ml-1.5">
+                                (tik om aan te passen)
                             </span>
                         )}
                     </h3>
-                    {safePlayerOrder.map((playerId) => {
-                        const player = players[playerId]
-                        const bid = currentRound.bids[playerId]
-                        const tricks = currentRound.tricks[playerId]
-                        const hasTricks = tricks !== undefined
-                        const score = hasTricks ? calculateBoerenBridgeScore(bid, tricks) : null
-                        const isCorrect = hasTricks && bid === tricks
-                        const isBeingEdited = editingPlayerId === playerId
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
+                        {safePlayerOrder.map((playerId) => {
+                            const player = players[playerId]
+                            const bid = currentRound.bids[playerId]
+                            const tricks = currentRound.tricks[playerId]
+                            const hasTricks = tricks !== undefined
+                            const score = hasTricks ? calculateBoerenBridgeScore(bid, tricks) : null
+                            const isCorrect = hasTricks && bid === tricks
+                            const isBeingEdited = editingPlayerId === playerId
 
-                        return (
-                            <div
-                                key={playerId}
-                                onClick={() => hasTricks && handleEditPlayer(playerId)}
-                                className={cn(
-                                    "flex items-center justify-between p-3 rounded-lg transition-all",
-                                    hasTricks ? "bg-slate-700 cursor-pointer hover:bg-slate-600 border border-slate-600" : "bg-slate-800 opacity-50",
-                                    isBeingEdited && "ring-4 ring-amber-500 bg-slate-600"
-                                )}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="font-bold text-lg text-white">{player.name}</span>
-                                    {isBeingEdited && (
-                                        <span className="text-xs bg-amber-600 text-white px-2 py-1 rounded font-bold">bewerken</span>
+                            return (
+                                <div
+                                    key={playerId}
+                                    onClick={() => hasTricks && handleEditPlayer(playerId)}
+                                    className={cn(
+                                        "flex items-center justify-between px-4 py-3 transition-all",
+                                        hasTricks ? "active:bg-zinc-800" : "opacity-40",
+                                        isBeingEdited && "ring-2 ring-inset ring-amber-500/50 bg-amber-500/5"
                                     )}
-                                </div>
-                                <div className="flex items-center gap-6">
-                                    <div className="text-base text-gray-300">
-                                        <span>Bod: </span>
-                                        <span className="font-bold text-emerald-400 text-xl">{bid}</span>
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-white">{player.name}</span>
+                                        {isBeingEdited && (
+                                            <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-semibold">bewerken</span>
+                                        )}
                                     </div>
-                                    <div className="text-base text-gray-300">
-                                        <span>Slagen: </span>
-                                        <span className={cn("font-bold text-xl", hasTricks ? "text-blue-400" : "text-gray-500")}>
-                                            {hasTricks ? tricks : "-"}
-                                        </span>
-                                    </div>
-                                    {hasTricks && (
-                                        <div className="flex items-center gap-2 min-w-[60px] justify-end">
-                                            {isCorrect ? (
-                                                <Check className="h-6 w-6 text-emerald-400" />
-                                            ) : (
-                                                <X className="h-6 w-6 text-red-400" />
-                                            )}
-                                            <span
-                                                className={cn(
-                                                    "font-bold font-mono text-2xl",
-                                                    score !== null && score > 0
-                                                        ? "text-emerald-400"
-                                                        : "text-red-400"
-                                                )}
-                                            >
-                                                {score !== null && score > 0 ? "+" : ""}
-                                                {score}
-                                            </span>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3 text-xs text-zinc-500">
+                                            <span>Bod <span className="font-bold text-emerald-400 text-sm">{bid}</span></span>
+                                            <span>Slagen <span className={cn("font-bold text-sm", hasTricks ? "text-blue-400" : "text-zinc-600")}>{hasTricks ? tricks : "-"}</span></span>
                                         </div>
-                                    )}
+                                        {hasTricks && (
+                                            <div className="flex items-center gap-1.5 min-w-[50px] justify-end">
+                                                {isCorrect ? (
+                                                    <Check className="h-4 w-4 text-emerald-400" />
+                                                ) : (
+                                                    <X className="h-4 w-4 text-red-400" />
+                                                )}
+                                                <span
+                                                    className={cn(
+                                                        "font-bold font-mono text-lg",
+                                                        score !== null && score > 0
+                                                            ? "text-emerald-400"
+                                                            : "text-red-400"
+                                                    )}
+                                                >
+                                                    {score !== null && score > 0 ? "+" : ""}
+                                                    {score}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )
-                    })}
+                            )
+                        })}
+                    </div>
                 </div>
-
             </div>
         </>
     )
 }
-

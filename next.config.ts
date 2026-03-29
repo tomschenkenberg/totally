@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
     reactCompiler: true,
     images: {
         dangerouslyAllowSVG: true,
-        domains: ["api.dicebear.com"],
         remotePatterns: [
             {
                 protocol: "https",

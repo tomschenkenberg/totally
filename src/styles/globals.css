@@ -1,14 +1,7 @@
 @import "tailwindcss";
 
-@layer components {
-    .total-row {
-        font-weight: bold;
-        background-color: #444;
-    }
-}
-
 @layer base {
-  :root {
+    :root {
         --sidebar-background: 240 5.9% 10%;
         --sidebar-foreground: 240 4.8% 95.9%;
         --sidebar-primary: 224.3 76.3% 48%;
@@ -17,5 +10,25 @@
         --sidebar-accent-foreground: 240 4.8% 95.9%;
         --sidebar-border: 240 3.7% 15.9%;
         --sidebar-ring: 217.2 91.2% 59.8%;
+    }
+
+    html {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    input[type="number"] {
+        -moz-appearance: textfield;
     }
 }

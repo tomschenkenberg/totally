@@ -6,9 +6,8 @@ import { use, useState, useEffect } from "react"
 import { playersAtom, Player } from "@/lib/atoms/players"
 import {
     schoppenvrouwenGameAtom,
-    setSchoppenvrouwenScoreAtom,
+    setSchoppenvrouwenScoreForRoundAtom,
     advanceSchoppenvrouwenRoundAtom,
-    isSchoppenvrouwenRoundCompleteAtom,
     isSchoppenvrouwenFinishedAtom,
     getSchoppenvrouwenPlayerTotalAtom,
     SCHOPPENVROUWEN_CARDS_PER_PLAYER
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Title from "@/components/title"
 import { Crown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 type Params = Promise<{ n: string }>
 
@@ -34,6 +34,10 @@ const InputPlayerScore = ({
     onScoreChange: (score: number) => void
 }) => {
     const [inputValue, setInputValue] = useState(currentScore?.toString() || "")
+
+    useEffect(() => {
+        setInputValue(currentScore?.toString() ?? "")
+    }, [currentScore])
 
     const handleScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const scoreValue = e.target.value
@@ -56,19 +60,17 @@ const InputPlayerScore = ({
     }
 
     return (
-        <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-            <div className="flex items-center space-x-2">
-                <div className="flex flex-col">
-                    <span className="text-xl font-bold text-gray-200">{player.name}</span>
-                    <span className="text-sm text-gray-400 font-mono">Totaal: {totalScore}</span>
-                </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex flex-col min-w-0">
+                <span className="text-base font-semibold text-white truncate">{player.name}</span>
+                <span className="text-xs text-zinc-500 font-mono">Totaal: {totalScore}</span>
             </div>
-            <span className="text-2xl font-bold ml-4 flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
                 <Input
-                    className="text-xl font-semibold font-mono w-24 bg-slate-600 border-slate-500"
+                    className="text-lg font-semibold font-mono w-20 h-10 bg-zinc-800 border-zinc-700 text-white text-center rounded-xl"
                     type="number"
                     inputMode="decimal"
-                    placeholder="Score"
+                    placeholder="0"
                     value={inputValue}
                     onChange={handleScoreChange}
                 />
@@ -77,11 +79,11 @@ const InputPlayerScore = ({
                     size="sm"
                     onClick={toggleSign}
                     disabled={inputValue === ""}
-                    className="border-slate-500 text-gray-200"
+                    className="border-zinc-700 text-zinc-400 hover:text-white h-10 w-10 p-0 rounded-xl"
                 >
                     +/-
                 </Button>
-            </span>
+            </div>
         </div>
     )
 }
@@ -93,9 +95,8 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
     const router = useRouter()
     const game = useAtomValue(schoppenvrouwenGameAtom)
     const players = useAtomValue(playersAtom)
-    const setScore = useSetAtom(setSchoppenvrouwenScoreAtom)
+    const setScoreForRound = useSetAtom(setSchoppenvrouwenScoreForRoundAtom)
     const advanceRound = useSetAtom(advanceSchoppenvrouwenRoundAtom)
-    const isRoundComplete = useAtomValue(isSchoppenvrouwenRoundCompleteAtom)
     const isGameFinished = useAtomValue(isSchoppenvrouwenFinishedAtom)
     const getPlayerTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
     const [isHydrated, setIsHydrated] = useState(false)
@@ -111,32 +112,73 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         }
     }, [game, router, isHydrated])
 
-    if (isNaN(roundNumber)) {
-        return <div>Invalid round number</div>
-    }
+    useEffect(() => {
+        if (!isHydrated || !game) return
+        if (isNaN(roundNumber)) {
+            router.replace("/schoppenvrouwen")
+            return
+        }
+        const ri = roundNumber - 1
+        if (ri < 0 || ri >= game.rounds.length) {
+            router.replace("/schoppenvrouwen")
+        }
+    }, [isHydrated, game, roundNumber, router])
 
     if (!isHydrated || !game) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-gray-400">Laden...</div>
+            <div className="flex items-center justify-center py-16">
+                <div className="text-zinc-500">Laden...</div>
             </div>
         )
     }
 
-    const currentRound = game.rounds[game.currentRoundIndex]
+    const roundIndex = roundNumber - 1
+    const isValidRound =
+        !isNaN(roundNumber) && roundIndex >= 0 && roundIndex < game.rounds.length
+
+    if (!isValidRound) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <div className="text-zinc-500">Laden...</div>
+            </div>
+        )
+    }
+
+    const viewedRound = game.rounds[roundIndex]
     const playerOrder = game.playerOrder
-    const dealerId = playerOrder[game.dealerIndex]
+    const orderLen = playerOrder.length
+    const displayDealerIndex =
+        orderLen > 0
+            ? (game.dealerIndex - (game.currentRoundIndex - roundIndex) + orderLen) % orderLen
+            : 0
+    const dealerId = orderLen > 0 ? playerOrder[displayDealerIndex] : undefined
+
+    const isViewedRoundComplete =
+        Object.keys(viewedRound.scores).length === playerOrder.length
+
+    const isEditingPastRound = roundIndex < game.currentRoundIndex
+
+    const doneButtonLabel = !isViewedRoundComplete
+        ? "Vul alle scores in"
+        : isEditingPastRound
+          ? "Terug naar stand →"
+          : isGameFinished
+            ? "Bekijk Eindstand →"
+            : "Volgende Ronde →"
 
     const handleDone = () => {
-        if (isRoundComplete) {
-            if (isGameFinished) {
-                // Game is over, go to final scoreboard
-                router.push("/schoppenvrouwen")
-            } else {
-                // Advance to next round and go to scoreboard
-                advanceRound()
-                router.push("/schoppenvrouwen")
-            }
+        if (!isViewedRoundComplete) return
+
+        if (isEditingPastRound) {
+            router.push("/schoppenvrouwen")
+            return
+        }
+
+        if (isGameFinished) {
+            router.push("/schoppenvrouwen")
+        } else {
+            advanceRound()
+            router.push("/schoppenvrouwen")
         }
     }
 
@@ -144,28 +186,34 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         <>
             <Title>Ronde {roundNumber}</Title>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {/* Round info */}
-                <div className="bg-rose-900/30 border border-rose-600/50 rounded-lg p-4">
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-3">
                     <div className="flex items-center justify-center gap-2">
-                        <Crown className="h-5 w-5 text-amber-400" />
-                        <span className="text-gray-200">
-                            <span className="font-bold text-white">{players[dealerId]?.name}</span> deelt{" "}
-                            <span className="font-bold text-rose-300">{SCHOPPENVROUWEN_CARDS_PER_PLAYER}</span> kaarten
+                        <Crown className="h-4 w-4 text-amber-400" />
+                        <span className="text-sm text-zinc-400">
+                            <span className="font-bold text-white">{dealerId !== undefined ? players[dealerId]?.name : "—"}</span>{" "}
+                            deelt{" "}
+                            <span className="font-bold text-rose-400">{SCHOPPENVROUWEN_CARDS_PER_PLAYER}</span> kaarten
                         </span>
                     </div>
                 </div>
 
                 {/* Score inputs */}
-                <div className="space-y-3">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
                     {playerOrder.map((playerId) => (
                         <InputPlayerScore
-                            key={playerId}
+                            key={`${playerId}-${roundIndex}`}
                             playerId={playerId}
                             player={players[playerId]}
-                            currentScore={currentRound?.scores[playerId]}
-                            totalScore={getPlayerTotal(playerId)}
-                            onScoreChange={(score) => setScore({ playerId, score })}
+                            currentScore={viewedRound.scores[playerId]}
+                            totalScore={
+                                getPlayerTotal(playerId) +
+                                (!isViewedRoundComplete ? (viewedRound.scores[playerId] ?? 0) : 0)
+                            }
+                            onScoreChange={(score) =>
+                                setScoreForRound({ roundIndex, playerId, score })
+                            }
                         />
                     ))}
                 </div>
@@ -173,17 +221,17 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                 {/* Done button */}
                 <Button
                     onClick={handleDone}
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-xl py-6"
-                    disabled={!isRoundComplete}
+                    className={cn(
+                        "w-full text-lg font-bold h-14 rounded-xl",
+                        isViewedRoundComplete
+                            ? "bg-rose-600 hover:bg-rose-700"
+                            : "bg-zinc-800 text-zinc-500"
+                    )}
+                    disabled={!isViewedRoundComplete}
                 >
-                    {isRoundComplete
-                        ? isGameFinished
-                            ? "Bekijk Eindstand →"
-                            : "Volgende Ronde →"
-                        : "Vul alle scores in"}
+                    {doneButtonLabel}
                 </Button>
             </div>
         </>
     )
 }
-

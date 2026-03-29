@@ -1,7 +1,7 @@
 "use client"
 
 import { useAtom, useAtomValue } from "jotai"
-import { Button } from "../../../components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import React from "react"
@@ -34,28 +34,27 @@ const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; r
     }
 
     return (
-        <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
-                <span className="text-xl font-bold text-gray-200">{player.name}</span>
-            </div>
-            <span className="text-2xl font-bold ml-4 flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="text-base font-semibold text-white truncate min-w-0">{player.name}</span>
+            <div className="flex items-center gap-2 shrink-0">
                 <Input
-                    className="text-xl font-semibold font-mono"
+                    className="text-lg font-semibold font-mono w-24 h-10 bg-zinc-800 border-zinc-700 text-white text-center rounded-xl"
                     type="number"
                     inputMode="decimal"
-                    placeholder="Score"
+                    placeholder="0"
                     value={inputValue}
                     onChange={handleScoreChange}
                 />
-                <Button 
-                    variant="outline" 
+                <Button
+                    variant="outline"
                     size="sm"
                     onClick={toggleSign}
                     disabled={inputValue === ""}
+                    className="border-zinc-700 text-zinc-400 hover:text-white h-10 w-10 p-0 rounded-xl"
                 >
                     +/-
                 </Button>
-            </span>
+            </div>
         </div>
     )
 }
@@ -65,14 +64,14 @@ const Round = ({ round }: { round: number }) => {
 
     return (
         <>
-            <div className="flex flex-col space-y-4 pb-6">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
                 {Object.entries(players).map(([id, player]) => (
                     <InputPlayerScore key={id} id={Number(id)} player={player} round={round} />
                 ))}
             </div>
             <Link href="/scores" prefetch={true}>
-                <Button variant="default" className="w-full">
-                    Done
+                <Button variant="default" className="w-full h-12 text-lg rounded-xl">
+                    Klaar
                 </Button>
             </Link>
         </>

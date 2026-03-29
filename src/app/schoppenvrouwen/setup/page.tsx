@@ -23,7 +23,6 @@ export default function SchoppenvrouwenSetupPage() {
     const [playerOrder, setPlayerOrder] = useState<number[]>([])
     const [dealerIndex, setDealerIndex] = useState(0)
 
-    // Initialize order when players change
     useEffect(() => {
         if (playerList.length > 0 && playerOrder.length === 0) {
             setPlayerOrder(playerList.map((p) => p.id))
@@ -40,12 +39,12 @@ export default function SchoppenvrouwenSetupPage() {
         return (
             <>
                 <Title>Schoppenvrouwen Setup</Title>
-                <div className="text-center space-y-4">
-                    <p className="text-gray-400 text-lg">
+                <div className="text-center space-y-4 py-8">
+                    <p className="text-zinc-400">
                         Je hebt minimaal 2 spelers nodig om Schoppenvrouwen te spelen.
                     </p>
                     <Link href="/players">
-                        <Button variant="default" className="bg-rose-600 hover:bg-rose-700">
+                        <Button variant="default" className="bg-rose-600 hover:bg-rose-700 rounded-xl h-12">
                             Voeg Spelers Toe
                         </Button>
                     </Link>
@@ -58,14 +57,12 @@ export default function SchoppenvrouwenSetupPage() {
         <>
             <Title>Schoppenvrouwen Setup</Title>
 
-            <div className="space-y-6">
+            <div className="space-y-5">
                 <div>
-                    <h2 className="text-xl font-semibold text-gray-200 mb-2">Spelersvolgorde</h2>
-                    <p className="text-gray-400 text-sm mb-4">
-                        Sleep spelers om de zitplaatsvolgorde aan te passen. Klik op de kroon om de eerste deler aan te
-                        wijzen.
+                    <h2 className="text-base font-semibold text-white mb-1">Spelersvolgorde</h2>
+                    <p className="text-zinc-500 text-sm mb-3">
+                        Sleep om de volgorde aan te passen. Tik op de kroon voor de eerste deler.
                     </p>
-
                     <PlayerOrderList
                         players={playerList}
                         playerOrder={playerOrder}
@@ -75,19 +72,19 @@ export default function SchoppenvrouwenSetupPage() {
                     />
                 </div>
 
-                <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-                    <h3 className="font-semibold text-gray-200 mb-2">Spelregels</h3>
-                    <ul className="text-sm text-gray-400 space-y-1">
-                        <li>• Eerste speler die {SCHOPPENVROUWEN_TARGET_SCORE} punten bereikt wint</li>
-                        <li>• Als meerdere spelers tegelijk {SCHOPPENVROUWEN_TARGET_SCORE}+ halen, wint de &ldquo;laatste finisher&rdquo;</li>
-                        <li>• Elke ronde: {SCHOPPENVROUWEN_CARDS_PER_PLAYER} kaarten per speler (2 decks)</li>
-                        <li>• Dealer wisselt elke ronde met de klok mee</li>
+                <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+                    <h3 className="font-semibold text-white text-sm mb-2">Spelregels</h3>
+                    <ul className="text-sm text-zinc-500 space-y-1">
+                        <li>• Eerste tot {SCHOPPENVROUWEN_TARGET_SCORE} punten wint</li>
+                        <li>• Gelijktijdig {SCHOPPENVROUWEN_TARGET_SCORE}+: laatste finisher wint</li>
+                        <li>• Per ronde: {SCHOPPENVROUWEN_CARDS_PER_PLAYER} kaarten per speler</li>
+                        <li>• Deler wisselt elke ronde met de klok mee</li>
                     </ul>
                 </div>
 
                 <Button
                     onClick={handleStartGame}
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-xl py-6"
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-lg font-bold h-14 rounded-xl"
                     disabled={playerOrder.length < 2}
                 >
                     Start Spel
@@ -96,4 +93,3 @@ export default function SchoppenvrouwenSetupPage() {
         </>
     )
 }
-

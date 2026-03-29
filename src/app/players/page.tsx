@@ -7,10 +7,10 @@ export default function PlayersPage() {
     const numberOfPlayers = 6
     return (
         <>
-            <Title>Players</Title>
-            <div className="mt-6 space-y-4">
+            <Title>Spelers</Title>
+            <div className="space-y-3">
                 {[...Array(numberOfPlayers)].map((_, index) => (
-                    <PlayerInput key={index} id={index} placeholder={`Player ${index + 1} Name`} />
+                    <PlayerInput key={index} id={index} placeholder={`Speler ${index + 1}`} />
                 ))}
             </div>
         </>

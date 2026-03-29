@@ -10,7 +10,7 @@ import {
     hasActiveGameAtom,
     GameMode
 } from "@/lib/atoms/game"
-import { Menu } from "lucide-react"
+import { Menu, Spade, Crown, Calculator } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
@@ -40,6 +40,12 @@ const GAME_MODE_LABELS: Record<GameMode, string> = {
     generic: "Vrije Scorekeeper"
 }
 
+const GAME_MODE_ICONS: Record<GameMode, React.ReactNode> = {
+    boerenbridge: <Spade className="h-4 w-4 text-emerald-400" />,
+    schoppenvrouwen: <Crown className="h-4 w-4 text-rose-400" />,
+    generic: <Calculator className="h-4 w-4 text-zinc-400" />
+}
+
 const NavButton = ({
     label,
     className,
@@ -59,12 +65,14 @@ const NavButton = ({
         (href === "/" && pathname === "/") ||
         matchPaths?.some((p) => pathname.startsWith(p))
 
-    const variant = isActive ? "secondary" : "ghost"
-
     const Content = (
         <Button
-            variant={variant}
-            className={cn("w-full justify-start text-lg font-normal", className)}
+            variant={isActive ? "secondary" : "ghost"}
+            className={cn(
+                "w-full justify-start text-base font-normal h-12 rounded-xl",
+                isActive && "bg-zinc-800 text-white font-medium",
+                className
+            )}
             onClick={onClick}
         >
             {label}
@@ -72,11 +80,7 @@ const NavButton = ({
     )
 
     if (onClick) {
-        return (
-            <SheetClose asChild>
-                {Content}
-            </SheetClose>
-        )
+        return <SheetClose asChild>{Content}</SheetClose>
     }
 
     return (
@@ -107,7 +111,6 @@ export function MainMenu() {
     }
 
     const handleNewGame = () => {
-        // Check if there's an active game with progress
         if (activeGame.active) {
             setPendingAction("new")
             setShowConfirmDialog(true)
@@ -117,7 +120,6 @@ export function MainMenu() {
     }
 
     const handleSwitchGame = () => {
-        // Check if there's an active game with progress
         if (activeGame.active) {
             setPendingAction("switch")
             setShowConfirmDialog(true)
@@ -145,6 +147,7 @@ export function MainMenu() {
                 matchPaths={["/boerenbridge"]}
             />
             <NavButton label="Spelers" href="/players" />
+            <div className="h-px bg-zinc-800 my-1" />
             <NavButton
                 label="Nieuw Spel"
                 href="/"
@@ -165,8 +168,8 @@ export function MainMenu() {
                 href="/schoppenvrouwen"
                 matchPaths={["/schoppenvrouwen"]}
             />
-            <NavButton label="Scores" href="/scores" />
             <NavButton label="Spelers" href="/players" />
+            <div className="h-px bg-zinc-800 my-1" />
             <NavButton
                 label="Nieuw Spel"
                 href="/"
@@ -185,6 +188,7 @@ export function MainMenu() {
             <NavButton label="Scoreboard" href="/" />
             <NavButton label="Scores" href="/scores" />
             <NavButton label="Players" href="/players" />
+            <div className="h-px bg-zinc-800 my-1" />
             <NavButton
                 label="Spel Wisselen"
                 href="/"
@@ -202,34 +206,50 @@ export function MainMenu() {
 
     return (
         <>
-            <div className="flex items-center px-4">
-                <Sheet>
-                    <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-gray-200 hover:text-white hover:bg-slate-700">
-                            <Menu className="h-6 w-6" />
-                            <span className="sr-only">Toggle menu</span>
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-[300px] sm:w-[400px]">
-                        <SheetHeader>
-                            <SheetTitle className="text-left">Menu</SheetTitle>
-                            <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
-                        </SheetHeader>
-                        <div className="flex flex-col gap-2 mt-4">
-                            {menuContent}
-                        </div>
-                    </SheetContent>
-                </Sheet>
-            </div>
+            <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
+                <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800">
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-[280px] bg-zinc-950 border-zinc-800">
+                            <SheetHeader>
+                                <SheetTitle className="text-left text-lg font-bold text-white">Totally</SheetTitle>
+                                <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                            </SheetHeader>
+                            <div className="flex flex-col gap-1 mt-6 px-1">
+                                {menuContent}
+                            </div>
+                        </SheetContent>
+                    </Sheet>
 
-            {/* Confirmation Dialog */}
+                    <span className="text-lg font-bold tracking-tight text-white">
+                        Totally
+                    </span>
+
+                    {gameMode ? (
+                        <div className="flex items-center gap-1.5 rounded-full bg-zinc-900 px-3 py-1.5 border border-zinc-800">
+                            {GAME_MODE_ICONS[gameMode]}
+                            <span className="text-xs font-medium text-zinc-400">
+                                {GAME_MODE_LABELS[gameMode].slice(0, 6)}
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="w-10" />
+                    )}
+                </div>
+            </header>
+
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <AlertDialogContent className="bg-slate-800 border-slate-600">
+                <AlertDialogContent className="bg-zinc-900 border-zinc-800 max-w-[calc(100vw-2rem)]">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-white text-xl">
                             {pendingAction === "new" ? "Nieuw spel starten?" : "Spel wisselen?"}
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-300 text-base">
+                        <AlertDialogDescription className="text-zinc-400 text-base">
                             Je hebt nog een actief{" "}
                             <span className="font-bold text-white">
                                 {activeGame.mode ? GAME_MODE_LABELS[activeGame.mode] : ""}
@@ -240,7 +260,7 @@ export function MainMenu() {
                     <AlertDialogFooter className="gap-2">
                         <AlertDialogCancel
                             onClick={handleCancel}
-                            className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                            className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700"
                         >
                             Annuleren
                         </AlertDialogCancel>

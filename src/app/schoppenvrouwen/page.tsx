@@ -16,7 +16,7 @@ import {
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
-import { cn } from "@/lib/utils"
+import { cn, scoreTextClass } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
 import { StandUpdate } from "@/components/stand-update"
@@ -156,7 +156,7 @@ export default function SchoppenvrouwenScoreboard() {
                                     {players[playerOrder[game.dealerIndex]]?.name}
                                 </span>
                                 <span className="text-zinc-400">deelt</span>
-                                <span className="text-2xl font-bold text-rose-400">
+                                <span className="text-2xl font-bold text-white tabular-nums">
                                     {SCHOPPENVROUWEN_CARDS_PER_PLAYER}
                                 </span>
                                 <span className="text-zinc-400">kaarten</span>
@@ -217,7 +217,11 @@ export default function SchoppenvrouwenScoreboard() {
                                         <span
                                             className={cn(
                                                 "text-2xl font-bold font-mono tabular-nums",
-                                                reachedTarget ? "text-amber-400" : "text-rose-400"
+                                                item.total < 0
+                                                    ? "text-red-400"
+                                                    : reachedTarget
+                                                      ? "text-amber-400"
+                                                      : "text-emerald-400"
                                             )}
                                         >
                                             {item.total}
@@ -276,11 +280,7 @@ export default function SchoppenvrouwenScoreboard() {
                                                                     <span
                                                                         className={cn(
                                                                             "font-bold font-mono text-base",
-                                                                            score > 0
-                                                                                ? "text-emerald-400"
-                                                                                : score < 0
-                                                                                  ? "text-red-400"
-                                                                                  : "text-zinc-500"
+                                                                            scoreTextClass(score)
                                                                         )}
                                                                     >
                                                                         {score > 0 ? "+" : ""}{score}

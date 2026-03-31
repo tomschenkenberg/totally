@@ -13,7 +13,7 @@ import {
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
-import { cn } from "@/lib/utils"
+import { cn, scoreTextClass } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
 import { EditRoundModal } from "@/components/edit-round-modal"
@@ -246,9 +246,9 @@ export default function BoerenBridgeScoreboard() {
                                                                         <span
                                                                             className={cn(
                                                                                 "font-bold font-mono text-base",
-                                                                                score !== null && score > 0
-                                                                                    ? "text-emerald-400"
-                                                                                    : "text-red-400"
+                                                                                score !== null
+                                                                                    ? scoreTextClass(score)
+                                                                                    : "text-zinc-500"
                                                                             )}
                                                                         >
                                                                             {score !== null && score > 0 ? "+" : ""}

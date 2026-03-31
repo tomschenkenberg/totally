@@ -3,12 +3,13 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
 import { useAtomValue } from "jotai"
-import { playersAtom, getNumberOfRoundsAtom } from "@/lib/atoms/players"
+import { playersAtom, getNumberOfRoundsAtom, activeNamedPlayers } from "@/lib/atoms/players"
 import {
     gameModeAtom,
     schoppenvrouwenGameAtom,
     isSchoppenvrouwenRoundFullyScored
 } from "@/lib/atoms/game"
+import { cn, scoreTextClass } from "@/lib/utils"
 
 export default function ScoresTable() {
     const router = useRouter()
@@ -62,21 +63,33 @@ export default function ScoresTable() {
                                     <TableCell className="w-10 text-center text-zinc-500 font-mono text-xs">
                                         {gameRoundIndex + 1}
                                     </TableCell>
-                                    {playerOrder.map((id) => (
-                                        <TableCell
-                                            key={id}
-                                            className="text-right font-mono px-3 text-zinc-300 text-sm"
-                                        >
-                                            {round.scores[id] ?? "-"}
-                                        </TableCell>
-                                    ))}
+                                    {playerOrder.map((id) => {
+                                        const v = round.scores[id]
+                                        return (
+                                            <TableCell
+                                                key={id}
+                                                className={cn(
+                                                    "text-right font-mono px-3 text-sm",
+                                                    v === undefined ? "text-zinc-500" : scoreTextClass(v)
+                                                )}
+                                            >
+                                                {v ?? "-"}
+                                            </TableCell>
+                                        )
+                                    })}
                                 </TableRow>
                             )
                         })}
                         <TableRow className="border-zinc-800 bg-zinc-800/30 hover:bg-zinc-800/30">
                             <TableCell className="w-10 text-center text-zinc-500 font-bold text-xs">Σ</TableCell>
                             {totals.map((total, i) => (
-                                <TableCell key={i} className="text-right font-mono font-bold px-3 text-white text-sm">
+                                <TableCell
+                                    key={i}
+                                    className={cn(
+                                        "text-right font-mono font-bold px-3 text-sm",
+                                        scoreTextClass(total)
+                                    )}
+                                >
                                     {total}
                                 </TableCell>
                             ))}
@@ -87,7 +100,7 @@ export default function ScoresTable() {
         )
     }
 
-    const playerEntries = Object.entries(players)
+    const playerEntries = Object.entries(activeNamedPlayers(players))
 
     const totals = playerEntries.map(([, player]) =>
         Object.values(player.scores).reduce((sum, score) => sum + score, 0)
@@ -120,17 +133,32 @@ export default function ScoresTable() {
                             <TableCell className="w-10 text-center text-zinc-500 font-mono text-xs">
                                 {roundNum}
                             </TableCell>
-                            {playerEntries.map(([id, player]) => (
-                                <TableCell key={id} className="text-right font-mono px-3 text-zinc-300 text-sm">
-                                    {player.scores[roundNum] || 0}
-                                </TableCell>
-                            ))}
+                            {playerEntries.map(([id, player]) => {
+                                const v = player.scores[roundNum] || 0
+                                return (
+                                    <TableCell
+                                        key={id}
+                                        className={cn(
+                                            "text-right font-mono px-3 text-sm",
+                                            scoreTextClass(v)
+                                        )}
+                                    >
+                                        {v}
+                                    </TableCell>
+                                )
+                            })}
                         </TableRow>
                     ))}
                     <TableRow className="border-zinc-800 bg-zinc-800/30 hover:bg-zinc-800/30">
                         <TableCell className="w-10 text-center text-zinc-500 font-bold text-xs">Σ</TableCell>
                         {totals.map((total, i) => (
-                            <TableCell key={i} className="text-right font-mono font-bold px-3 text-white text-sm">
+                            <TableCell
+                                key={i}
+                                className={cn(
+                                    "text-right font-mono font-bold px-3 text-sm",
+                                    scoreTextClass(total)
+                                )}
+                            >
                                 {total}
                             </TableCell>
                         ))}

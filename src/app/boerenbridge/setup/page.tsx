@@ -1,13 +1,13 @@
 "use client"
 
 import { useAtomValue, useSetAtom } from "jotai"
-import { playersAtom } from "@/lib/atoms/players"
+import { playersAtom, activeNamedPlayers } from "@/lib/atoms/players"
 import { initBoerenBridgeGameAtom } from "@/lib/atoms/game"
 import { PlayerOrderList } from "@/components/player-order-list"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 
 export default function BoerenBridgeSetupPage() {
@@ -15,19 +15,38 @@ export default function BoerenBridgeSetupPage() {
     const initGame = useSetAtom(initBoerenBridgeGameAtom)
     const router = useRouter()
 
-    const playerList = Object.entries(players).map(([id, player]) => ({
-        id: Number(id),
-        player
-    }))
+    const activePlayers = useMemo(() => activeNamedPlayers(players), [players])
+
+    const activeIds = useMemo(
+        () =>
+            Object.keys(activePlayers)
+                .map(Number)
+                .sort((a, b) => a - b),
+        [activePlayers]
+    )
+
+    const playerList = useMemo(
+        () => activeIds.map((id) => ({ id, player: activePlayers[id]! })),
+        [activeIds, activePlayers]
+    )
 
     const [playerOrder, setPlayerOrder] = useState<number[]>([])
     const [dealerIndex, setDealerIndex] = useState(0)
 
     useEffect(() => {
-        if (playerList.length > 0 && playerOrder.length === 0) {
-            setPlayerOrder(playerList.map((p) => p.id))
-        }
-    }, [playerList, playerOrder.length])
+        setPlayerOrder((prev) => {
+            const idSet = new Set(activeIds)
+            const kept = prev.filter((id) => idSet.has(id))
+            const toAdd = activeIds.filter((id) => !kept.includes(id))
+            const next = [...kept, ...toAdd]
+            if (next.length === prev.length && next.every((id, i) => id === prev[i])) return prev
+            return next
+        })
+    }, [activeIds])
+
+    useEffect(() => {
+        setDealerIndex((d) => (playerOrder.length === 0 ? 0 : Math.min(d, playerOrder.length - 1)))
+    }, [playerOrder])
 
     const handleStartGame = () => {
         if (playerOrder.length < 2) return

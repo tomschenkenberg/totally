@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Title from "@/components/title"
 import { Crown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, scoreTextClass } from "@/lib/utils"
 
 type Params = Promise<{ n: string }>
 
@@ -63,7 +63,10 @@ const InputPlayerScore = ({
         <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex flex-col min-w-0">
                 <span className="text-base font-semibold text-white truncate">{player.name}</span>
-                <span className="text-xs text-zinc-500 font-mono">Totaal: {totalScore}</span>
+                <span className="text-xs text-zinc-500 font-mono">
+                    Totaal:{" "}
+                    <span className={scoreTextClass(totalScore)}>{totalScore}</span>
+                </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
                 <Input
@@ -194,7 +197,8 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                         <span className="text-sm text-zinc-400">
                             <span className="font-bold text-white">{dealerId !== undefined ? players[dealerId]?.name : "—"}</span>{" "}
                             deelt{" "}
-                            <span className="font-bold text-rose-400">{SCHOPPENVROUWEN_CARDS_PER_PLAYER}</span> kaarten
+                            <span className="font-bold text-white tabular-nums">{SCHOPPENVROUWEN_CARDS_PER_PLAYER}</span>{" "}
+                            kaarten
                         </span>
                     </div>
                 </div>

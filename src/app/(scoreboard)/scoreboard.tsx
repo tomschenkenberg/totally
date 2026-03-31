@@ -5,6 +5,7 @@ import { useAtomValue } from "jotai"
 import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"
 import { AddNewScoresButton } from "@/components/add-scores-button"
 import { StandUpdate } from "@/components/stand-update"
+import { cn, scoreTextClass } from "@/lib/utils"
 
 const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     const getTotalScore = useAtomValue(getTotalScoreAtom)
@@ -12,7 +13,11 @@ const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     return (
         <div className="flex justify-between items-center px-4 py-3">
             <span className="text-lg font-semibold text-white">{player.name}</span>
-            <span className="text-xl font-bold font-mono tabular-nums text-white">{getTotalScore(id)}</span>
+            <span
+                className={cn("text-xl font-bold font-mono tabular-nums", scoreTextClass(getTotalScore(id)))}
+            >
+                {getTotalScore(id)}
+            </span>
         </div>
     )
 }

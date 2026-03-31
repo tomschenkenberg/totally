@@ -8,8 +8,31 @@ export interface Player {
     name: string
     gender: Gender
     scores: Scores
+    /** When false, hidden from games / generic scoring; still in roster. Omitted = active (migration). */
+    active?: boolean
 }
 export type Players = { [id: number]: Player }
+
+export function isPlayerActive(player: Player): boolean {
+    return player.active !== false
+}
+
+/** Players with a non-empty name who are toggled on (for games + generic score entry). */
+export function activeNamedPlayers(players: Players): Players {
+    const out: Players = {}
+    for (const [idStr, p] of Object.entries(players)) {
+        const id = Number(idStr)
+        if (p.name.trim() && isPlayerActive(p)) {
+            out[id] = p
+        }
+    }
+    return out
+}
+
+export function nextPlayerId(players: Players): number {
+    const ids = Object.keys(players).map(Number)
+    return ids.length === 0 ? 0 : Math.max(...ids) + 1
+}
 
 /** Numeric round keys from a player's scores (object keys are stringified in storage). */
 export function numericScoreKeysForPlayer(player: Player): number[] {
@@ -59,7 +82,8 @@ export const setPlayerNameAtom = atom(null, (get, set, { id, name }: { id: numbe
                 ...players[id],
                 name,
                 gender: players[id]?.gender || "x",
-                scores: players[id]?.scores || {}
+                scores: players[id]?.scores || {},
+                active: players[id]?.active
             }
         })
     }
@@ -104,10 +128,12 @@ export const addScoreForRoundAtom = atom(
 )
 
 /** Max round number (score map key), not count of entries — supports non-sequential keys. */
-export const getNumberOfRoundsAtom = atom((get) => maxRoundKeyFromPlayers(get(playersAtom)))
+export const getNumberOfRoundsAtom = atom((get) =>
+    maxRoundKeyFromPlayers(activeNamedPlayers(get(playersAtom)))
+)
 
 export const getPlayersSortedByScoreAtom = atom((get) => {
-    const players = get(playersAtom)
+    const players = activeNamedPlayers(get(playersAtom))
     const getTotalScore = get(getTotalScoreAtom)
 
     return Object.entries(players)

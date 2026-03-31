@@ -4,7 +4,12 @@ import { useState, useCallback, useRef } from "react"
 import { useAtomValue } from "jotai"
 import { readStreamableValue } from "@ai-sdk/rsc"
 import { Button } from "@/components/ui/button"
-import { playersAtom, maxRoundKeyFromPlayers, sortedUnionRoundKeys } from "@/lib/atoms/players"
+import {
+    playersAtom,
+    maxRoundKeyFromPlayers,
+    sortedUnionRoundKeys,
+    activeNamedPlayers
+} from "@/lib/atoms/players"
 import {
     boerenBridgeGameAtom,
     getPlayerBoerenBridgeTotalAtom,
@@ -87,9 +92,10 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
             }
         }
 
-        const roundKeys = sortedUnionRoundKeys(players)
-        const maxRound = maxRoundKeyFromPlayers(players)
-        const playerStandings = Object.entries(players).map(([, player]) => ({
+        const genericPlayers = activeNamedPlayers(players)
+        const roundKeys = sortedUnionRoundKeys(genericPlayers)
+        const maxRound = maxRoundKeyFromPlayers(genericPlayers)
+        const playerStandings = Object.entries(genericPlayers).map(([, player]) => ({
             name: player.name,
             gender: player.gender || "x",
             score: Object.values(player.scores).reduce((a, b) => a + b, 0),

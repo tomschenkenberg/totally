@@ -14,7 +14,7 @@ import {
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
-import { cn } from "@/lib/utils"
+import { cn, scoreTextClass } from "@/lib/utils"
 import { useEffect, useState, useRef } from "react"
 import { Check, X, AlertTriangle } from "lucide-react"
 
@@ -385,9 +385,7 @@ export default function TricksPage() {
                                                 <span
                                                     className={cn(
                                                         "font-bold font-mono text-lg",
-                                                        score !== null && score > 0
-                                                            ? "text-emerald-400"
-                                                            : "text-red-400"
+                                                        score !== null ? scoreTextClass(score) : "text-zinc-500"
                                                     )}
                                                 >
                                                     {score !== null && score > 0 ? "+" : ""}

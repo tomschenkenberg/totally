@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import React from "react"
-import { playersAtom, getPlayerScoresAtom, addScoreForRoundAtom, Player } from "@/lib/atoms/players"
+import {
+    playersAtom,
+    getPlayerScoresAtom,
+    addScoreForRoundAtom,
+    Player,
+    activeNamedPlayers
+} from "@/lib/atoms/players"
 
 const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; round: number }) => {
     const getPlayerScores = useAtomValue(getPlayerScoresAtom)
@@ -61,11 +67,12 @@ const InputPlayerScore = ({ id, player, round }: { id: number; player: Player; r
 
 const Round = ({ round }: { round: number }) => {
     const players = useAtomValue(playersAtom)
+    const scoringPlayers = activeNamedPlayers(players)
 
     return (
         <>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
-                {Object.entries(players).map(([id, player]) => (
+                {Object.entries(scoringPlayers).map(([id, player]) => (
                     <InputPlayerScore key={id} id={Number(id)} player={player} round={round} />
                 ))}
             </div>

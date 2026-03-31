@@ -17,7 +17,7 @@ import {
     SheetDescription
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn, scoreTextClass } from "@/lib/utils"
 import { AlertTriangle, Check, X } from "lucide-react"
 
 interface EditRoundModalProps {
@@ -128,9 +128,7 @@ export function EditRoundModal({ roundIndex, open, onOpenChange }: EditRoundModa
                                                 <span
                                                     className={cn(
                                                         "font-bold font-mono text-lg",
-                                                        score !== null && score > 0
-                                                            ? "text-emerald-400"
-                                                            : "text-red-400"
+                                                        score !== null ? scoreTextClass(score) : "text-zinc-500"
                                                     )}
                                                 >
                                                     {score !== null && score > 0 ? "+" : ""}

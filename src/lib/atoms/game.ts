@@ -24,6 +24,8 @@ export const BOEREN_BRIDGE_ROUNDS = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 
 // Schoppenvrouwen specific types
 export interface SchoppenvrouwenRound {
     scores: { [playerId: number]: number }
+    /** Who ended the round in play (uitgelegd / all cards down). Tie-break when multiple players are 1000+. */
+    roundClosedByPlayerId?: number | null
 }
 
 export interface SchoppenvrouwenGame {
@@ -354,6 +356,28 @@ export function isSchoppenvrouwenRoundFullyScored(round: SchoppenvrouwenRound, p
     return Object.keys(round.scores).length === playerCount
 }
 
+/** Last fully scored round index, or -1 */
+export function getSchoppenvrouwenLastFullyScoredRoundIndex(game: SchoppenvrouwenGame): number {
+    const n = game.playerOrder.length
+    for (let i = game.rounds.length - 1; i >= 0; i--) {
+        if (isSchoppenvrouwenRoundFullyScored(game.rounds[i], n)) return i
+    }
+    return -1
+}
+
+/**
+ * Who closed the finishing round (last round with all scores). Used when multiple players are 1000+:
+ * the closer wins, not the highest total. Legacy games only have game.lastRoundClosedByPlayerId on the last round.
+ */
+export function getSchoppenvrouwenFinishingRoundCloserId(game: SchoppenvrouwenGame): number | null {
+    const lastIdx = getSchoppenvrouwenLastFullyScoredRoundIndex(game)
+    if (lastIdx < 0) return null
+    const round = game.rounds[lastIdx]
+    if (round.roundClosedByPlayerId != null) return round.roundClosedByPlayerId
+    if (game.lastRoundClosedByPlayerId != null) return game.lastRoundClosedByPlayerId
+    return null
+}
+
 // Get current dealer player ID for Schoppenvrouwen
 export const getSchoppenvrouwenDealerIdAtom = atom((get) => {
     const game = get(schoppenvrouwenGameAtom)
@@ -400,22 +424,21 @@ export const isSchoppenvrouwenFinishedAtom = atom((get) => {
     return game.playerOrder.some((id) => getTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE)
 })
 
-// Get Schoppenvrouwen winner(s) - when multiple players hit 1000+, the last finisher wins
+// Get Schoppenvrouwen winner — multiple players 1000+: who closed the last round wins, not highest score
 export const getSchoppenvrouwenWinnerAtom = atom((get) => {
     const game = get(schoppenvrouwenGameAtom)
     const isFinished = get(isSchoppenvrouwenFinishedAtom)
     if (!game || !isFinished) return null
 
     const getTotal = get(getSchoppenvrouwenPlayerTotalAtom)
-    
-    // Get all players who reached 1000+
+
     const winners = game.playerOrder.filter((id) => getTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE)
-    
+
     if (winners.length === 0) return null
     if (winners.length === 1) return winners[0]
 
-    const closer = game.lastRoundClosedByPlayerId
-    if (closer !== undefined && closer !== null && winners.includes(closer)) {
+    const closer = getSchoppenvrouwenFinishingRoundCloserId(game)
+    if (closer !== null && winners.includes(closer)) {
         return closer
     }
 
@@ -453,6 +476,9 @@ export const setSchoppenvrouwenScoreAtom = atom(
         const prevComplete = isSchoppenvrouwenRoundFullyScored(currentRound, game.playerOrder.length)
         currentRound.scores = { ...currentRound.scores, [playerId]: score }
         const nextComplete = isSchoppenvrouwenRoundFullyScored(currentRound, game.playerOrder.length)
+        if (nextComplete && !prevComplete) {
+            currentRound.roundClosedByPlayerId = playerId
+        }
         updatedRounds[game.currentRoundIndex] = currentRound
 
         let lastRoundClosedByPlayerId = game.lastRoundClosedByPlayerId ?? null
@@ -476,10 +502,37 @@ export const setSchoppenvrouwenScoreForRoundAtom = atom(
         const prevComplete = isSchoppenvrouwenRoundFullyScored(round, game.playerOrder.length)
         round.scores = { ...round.scores, [playerId]: score }
         const nextComplete = isSchoppenvrouwenRoundFullyScored(round, game.playerOrder.length)
+        if (nextComplete && !prevComplete) {
+            round.roundClosedByPlayerId = playerId
+        }
         updatedRounds[roundIndex] = round
 
         let lastRoundClosedByPlayerId = game.lastRoundClosedByPlayerId ?? null
         if (nextComplete && !prevComplete) {
+            lastRoundClosedByPlayerId = playerId
+        }
+
+        set(schoppenvrouwenGameAtom, { ...game, rounds: updatedRounds, lastRoundClosedByPlayerId })
+    }
+)
+
+// Who ended the round in play (uitgelegd) — correct if it was not the last person to enter scores
+export const setSchoppenvrouwenRoundClosedByForRoundAtom = atom(
+    null,
+    (get, set, { roundIndex, playerId }: { roundIndex: number; playerId: number }) => {
+        const game = get(schoppenvrouwenGameAtom)
+        if (!game || roundIndex < 0 || roundIndex >= game.rounds.length) return
+
+        const updatedRounds = [...game.rounds]
+        const round = { ...updatedRounds[roundIndex] }
+        if (!isSchoppenvrouwenRoundFullyScored(round, game.playerOrder.length)) return
+
+        round.roundClosedByPlayerId = playerId
+        updatedRounds[roundIndex] = round
+
+        const lastIdx = getSchoppenvrouwenLastFullyScoredRoundIndex({ ...game, rounds: updatedRounds })
+        let lastRoundClosedByPlayerId = game.lastRoundClosedByPlayerId ?? null
+        if (roundIndex === lastIdx) {
             lastRoundClosedByPlayerId = playerId
         }
 

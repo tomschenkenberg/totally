@@ -79,6 +79,11 @@ export async function generateStandUpdate(gameState: GameState) {
         roundHistory.push(`Ronde ${roundLabel(r)}: ${roundScores} → Leider: ${leaderAfterRound.name} (${leaderAfterRound.total})`)
     }
 
+    /** Keep prompts short so the model doesn't narrate every round. */
+    const RECENT_ROUNDS_IN_PROMPT = 5
+    const roundHistoryRecent = roundHistory.slice(-RECENT_ROUNDS_IN_PROMPT)
+    const roundHistoryOlderCount = Math.max(0, numRounds - RECENT_ROUNDS_IN_PROMPT)
+
     // Find biggest swing (best single round)
     let bestRound = { name: "", round: 0, score: -Infinity }
     let worstRound = { name: "", round: 0, score: Infinity }
@@ -153,9 +158,16 @@ Dit was ronde ${currentRound}. De leider ${leader.name} heeft nog ${pointsToWin}
     const playersGenderText = players
         .map((p) => {
             const g = genderInfo(p.gender)
-            return `${p.name}: ${p.gender === "m" ? "man" : p.gender === "v" ? "vrouw" : "onbekend"} → gebruik "${g.hij}/${g.hem}/${g.zijn}"`
+            const role =
+                p.gender === "m" ? "man" : p.gender === "v" ? "vrouw" : "niet gespecificeerd (neutraal: die/diens/hen)"
+            return `${p.name}: ${role} → onderwerp: ${g.hij}; meewerkend voorwerp: ${g.hem}; bezittelijk: ${g.zijn}`
         })
         .join("\n")
+
+    const recentFormLine =
+        hotPlayer.name === coldPlayer.name || Math.abs(hotPlayer.avg - coldPlayer.avg) < 0.01
+            ? "Recente vorm: iedereen zit dicht bij elkaar (geen duidelijke 'hot' of 'cold')."
+            : `Recente vorm (laatste ${recentRounds} rondes): ${hotPlayer.name} zit het best in de flow (gem. ${hotPlayer.avg.toFixed(1)}), ${coldPlayer.name} heeft het zwaarder (gem. ${coldPlayer.avg.toFixed(1)}).`
 
     const isGameFinished = gameMode === "schoppenvrouwen" && targetScore
         ? leader.score >= targetScore
@@ -197,89 +209,87 @@ Dit was ronde ${currentRound}. De leider ${leader.name} heeft nog ${pointsToWin}
             ? `(na ronde ${currentRound}, doel: ${targetScore} punten)`
             : `(na ronde ${currentRound})`
 
+    const olderRoundsNote =
+        roundHistoryOlderCount > 0
+            ? `Let op: ${roundHistoryOlderCount} eerdere rondes zijn weggelaten; baseer je niet op elke ronde afzonderlijk.\n\n`
+            : ""
+
+    const FINISHED_HISTORY_TAIL = 10
+    const roundHistoryFinishedTail = roundHistory.slice(-FINISHED_HISTORY_TAIL)
+    const roundHistoryFinishedOmitted = Math.max(0, numRounds - FINISHED_HISTORY_TAIL)
+
     const prompt = isGameFinished
-        ? `Je bent een enthousiaste en grappige Nederlandse spelcommentator. Het spel is AFGELOPEN! Geef een epische samenvatting van het hele spel en roep de winnaar uit.
+        ? `Je bent een scherpe Nederlandse spelcommentator (NOS-sport, maar dan voor kaarten: droog, slim, geen tierlantijnen). Het spel is AFGELOPEN.
 
 ${getGameTypeDescription()}
 
-GESLACHT SPELERS (gebruik de juiste voornaamwoorden!):
+GESLACHT — gebruik consequent de juiste vorm per speler (zie onder; nooit "hij" voor iemand die als vrouw staat, enz.):
 ${playersGenderText}
 
-🏆 EINDSTAND ${roundsDescription}:
+EINDSTAND ${roundsDescription}:
 ${standingsText}
 
-WINNAAR: ${leader.name} met ${leader.score} punten!${targetScore ? ` (doel was ${targetScore})` : ""}
-${sortedPlayers.length > 1 ? `Nummer 2: ${sortedPlayers[1].name} met ${sortedPlayers[1].score} punten (${leader.score - sortedPlayers[1].score} punten achterstand)` : ""}
-${sortedPlayers.length > 2 ? `Hekkensluiter: ${lastPlace.name} met ${lastPlace.score} punten` : ""}
+WINNAAR: ${leader.name} met ${leader.score} punten${targetScore ? ` (doel was ${targetScore})` : ""}
+${sortedPlayers.length > 1 ? `2: ${sortedPlayers[1].name} (${sortedPlayers[1].score}, ${leader.score - sortedPlayers[1].score} achter)` : ""}
+${sortedPlayers.length > 2 ? `Laatste: ${lastPlace.name} (${lastPlace.score})` : ""}
 
-VOLLEDIGE RONDE HISTORIE:
-${roundHistory.join("\n")}
+${roundHistoryFinishedOmitted > 0 ? `(${roundHistoryFinishedOmitted} oude rondes niet hieronder; niet alle rondes bespreken.)\n\n` : ""}LAATSTE RONDES (detail):
+${roundHistoryFinishedTail.join("\n")}
 
 LEIDINGSWISSELINGEN:
-${leadChanges.length > 0 ? leadChanges.join("\n") : "Geen leidingswisselingen - de winnaar leidde vanaf het begin!"}
+${leadChanges.length > 0 ? leadChanges.join("\n") : "Geen wisseling aan de kop — de winnaar stond vooraan vanaf het eerste moment."}
 
-STATISTIEKEN VAN HET HELE SPEL:
-- Beste ronde: ${bestRound.name} in ronde ${bestRound.round} met ${bestRound.score > 0 ? "+" : ""}${bestRound.score} punten
-- Slechtste ronde: ${worstRound.name} in ronde ${worstRound.round} met ${worstRound.score} punten
-- Totaal punten verschil 1e en laatste: ${leader.score - lastPlace.score} punten
+PEAK & DAL:
+- Beste enkele ronde: ${bestRound.name}, ronde ${bestRound.round}, ${bestRound.score > 0 ? "+" : ""}${bestRound.score}
+- Zwaarste ronde: ${worstRound.name}, ronde ${worstRound.round}, ${worstRound.score}
+- Verschil 1e vs laatste: ${leader.score - lastPlace.score} pt
 
-CONSISTENTIE OVER ALLE ${currentRound} RONDES:
+CONSISTENTIE (goed / mis over het hele spel):
 ${consistencyText}
 
-INSTRUCTIES:
-- Maximaal 6-8 zinnen (dit is de grote finale!)
-- Begin met het uitroepen van de winnaar op een feestelijke manier
-- Geef een korte terugblik op het spel: was het spannend? Waren er comebacks?
-- Benoem bijzondere momenten of leidingswisselingen
-- Geef de winnaar een compliment en de verliezer(s) een troostende/grappige opmerking
-- BELANGRIJK: Gebruik de juiste voornaamwoorden per speler (hij/zij/die, hem/haar, zijn/haar/diens)
-- Wees grappig en creatief met woordspelingen
-- Gebruik informele, enthousiaste taal
-- Geen emojis gebruiken
-- ALLEEN de update tekst, geen intro of afsluiting`
-        : `Je bent een enthousiaste en grappige Nederlandse spelcommentator. Geef een korte, leuke update over de stand van het spel.
+STIJL (belangrijk):
+- Maximaal 5 zinnen totaal — geen lap tekst.
+- Open met de winnaar; daarna kort: spanning, beste moment of leidingsdrama; géén opsomming van elke ronde.
+- Humor: understatement, ironie, één goede punchline — géén willekeurige metaforen ("als een trein in een soufflé"), géén dieren/planeten-vergelijkingen tenzij echt passend.
+- Geen emoji's. Informeel maar strak.
+- ALLEEN de commentaartekst.`
+        : `Je bent een scherpe Nederlandse spelcommentator voor vrienden aan tafel: kort, grappig, intelligent — geen uitzending om de haverklap.
 
 ${gameContext}
 
-GESLACHT SPELERS (gebruik de juiste voornaamwoorden!):
+GESLACHT — gebruik consequent de juiste vorm per speler:
 ${playersGenderText}
 
-HUIDIGE STAND ${standDescription}:
+STAND ${standDescription}:
 ${standingsText}
 
-VOLLEDIGE RONDE HISTORIE:
-${roundHistory.join("\n")}
+${olderRoundsNote}LAATSTE RONDES:
+${roundHistoryRecent.join("\n")}
 
-STATISTIEKEN:
-- Beste ronde ooit: ${bestRound.name} in ronde ${bestRound.round} met ${bestRound.score > 0 ? "+" : ""}${bestRound.score} punten
-- Slechtste ronde ooit: ${worstRound.name} in ronde ${worstRound.round} met ${worstRound.score} punten
-- Verschil tussen 1 en laatste: ${leader.score - lastPlace.score} punten
-${targetScore ? `- Leider heeft nog ${targetScore - leader.score} punten nodig om te winnen` : ""}
+KERNCIJFERS:
+- Topronde tot nu toe: ${bestRound.name} (ronde ${bestRound.round}, ${bestRound.score > 0 ? "+" : ""}${bestRound.score})
+- Dieptepunt: ${worstRound.name} (ronde ${worstRound.round}, ${worstRound.score})
+- Kloof 1↔laatste: ${leader.score - lastPlace.score} pt
+${targetScore ? `- ${leader.name} nog ${targetScore - leader.score} tot ${targetScore}` : ""}
 
-CONSISTENTIE (rondes positief/negatief):
+${recentFormLine}
+
+CONSISTENTIE (kort):
 ${consistencyText}
 
-RECENTE VORM (laatste ${recentRounds} rondes):
-- Hot: ${hotPlayer.name} (gem. ${hotPlayer.avg.toFixed(1)} per ronde)
-- Not: ${coldPlayer.name} (gem. ${coldPlayer.avg.toFixed(1)} per ronde)
-
-INSTRUCTIES:
-- Maximaal 4-5 zinnen
-- Wees grappig en creatief met woordspelingen of grappige vergelijkingen
-- Benoem wie er goed speelt en wie het moeilijk heeft
-- Verwijs naar specifieke rondes of momenten als dat interessant is
-- Als iemand een comeback maakt of juist wegzakt, benoem dat!
-- Als het spannend is, benoem dat!
-${targetScore ? `- Vermeld hoe dichtbij spelers zijn bij de ${targetScore} punten (bijv. "nog 200 punten te gaan")` : `- Vermeld waar we zijn in het spel (bijv. "halverwege", "nog 3 rondes te gaan", "de finale nadert")`}
-- BELANGRIJK: Gebruik de juiste voornaamwoorden per speler (hij/zij/die, hem/haar, zijn/haar/diens)
-- Gebruik informele, enthousiaste taal (alsof je vrienden aan het commentaar geeft)
-- Geen emojis gebruiken
-- ALLEEN de update tekst, geen intro of afsluiting`
+STIJL (belangrijk):
+- Maximaal 3 zinnen. Liever 2 strakke zinnen dan 3 wollige.
+- Geen opsomming van alle rondes; max. één concreet rondemoment als het echt iets toevoegt.
+- Humor: droog, sportdesk-achtig, woordspel mag — géén geforceerde vergelijkingen of surrealistische beelden.
+- Spanningsniveau alleen als het echt dichtbij elkaar zit of de kop nog kan wisselen; geen kunstmatige hype.
+${targetScore ? `- Zo nodig één zin over afstand tot ${targetScore} punten.` : totalRounds ? `- Zo nodig één zin over resterende rondes (${roundsRemaining ?? "?"}).` : ""}
+- Geen emoji's. ALLEEN de commentaartekst.`
 
     ;(async () => {
         const { textStream } = streamText({
             model: openai("gpt-4o-mini"),
-            prompt
+            prompt,
+            maxOutputTokens: isGameFinished ? 320 : 200
         })
 
         for await (const delta of textStream) {

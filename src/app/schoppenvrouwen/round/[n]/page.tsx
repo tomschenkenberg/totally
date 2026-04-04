@@ -7,10 +7,13 @@ import { playersAtom, Player } from "@/lib/atoms/players"
 import {
     schoppenvrouwenGameAtom,
     setSchoppenvrouwenScoreForRoundAtom,
+    setSchoppenvrouwenRoundClosedByForRoundAtom,
     advanceSchoppenvrouwenRoundAtom,
     isSchoppenvrouwenFinishedAtom,
     getSchoppenvrouwenPlayerTotalAtom,
-    SCHOPPENVROUWEN_CARDS_PER_PLAYER
+    getSchoppenvrouwenLastFullyScoredRoundIndex,
+    SCHOPPENVROUWEN_CARDS_PER_PLAYER,
+    SCHOPPENVROUWEN_TARGET_SCORE
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -99,10 +102,12 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
     const game = useAtomValue(schoppenvrouwenGameAtom)
     const players = useAtomValue(playersAtom)
     const setScoreForRound = useSetAtom(setSchoppenvrouwenScoreForRoundAtom)
+    const setRoundClosedBy = useSetAtom(setSchoppenvrouwenRoundClosedByForRoundAtom)
     const advanceRound = useSetAtom(advanceSchoppenvrouwenRoundAtom)
     const isGameFinished = useAtomValue(isSchoppenvrouwenFinishedAtom)
     const getPlayerTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
     const [isHydrated, setIsHydrated] = useState(false)
+    const [closerConfirmed, setCloserConfirmed] = useState(false)
 
     useEffect(() => {
         setIsHydrated(true)
@@ -159,18 +164,40 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
     const isViewedRoundComplete =
         Object.keys(viewedRound.scores).length === playerOrder.length
 
+    const lastFullyScoredRoundIndex = getSchoppenvrouwenLastFullyScoredRoundIndex(game)
+    const playersAtOrOverTarget = playerOrder.filter(
+        (id) => getPlayerTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE
+    )
+    const shouldAskWhoClosed =
+        isViewedRoundComplete &&
+        roundIndex === lastFullyScoredRoundIndex &&
+        playersAtOrOverTarget.length >= 2
+
+    useEffect(() => {
+        setCloserConfirmed(false)
+    }, [roundIndex, shouldAskWhoClosed])
+
+    const closerHighlightId =
+        viewedRound.roundClosedByPlayerId ??
+        (roundIndex === lastFullyScoredRoundIndex ? game.lastRoundClosedByPlayerId : undefined) ??
+        playerOrder[0]
+
     const isEditingPastRound = roundIndex < game.currentRoundIndex
+    const canFinishRound =
+        isViewedRoundComplete && (!shouldAskWhoClosed || closerConfirmed)
 
     const doneButtonLabel = !isViewedRoundComplete
         ? "Vul alle scores in"
-        : isEditingPastRound
-          ? "Terug naar stand →"
-          : isGameFinished
-            ? "Bekijk Eindstand →"
-            : "Volgende Ronde →"
+        : shouldAskWhoClosed && !closerConfirmed
+          ? "Kies wie de ronde heeft afgesloten"
+          : isEditingPastRound
+            ? "Terug naar stand →"
+            : isGameFinished
+              ? "Bekijk Eindstand →"
+              : "Volgende Ronde →"
 
     const handleDone = () => {
-        if (!isViewedRoundComplete) return
+        if (!canFinishRound) return
 
         if (isEditingPastRound) {
             router.push("/schoppenvrouwen")
@@ -222,16 +249,48 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                     ))}
                 </div>
 
+                {shouldAskWhoClosed && (
+                    <div className="rounded-2xl border border-amber-500/30 bg-zinc-900 p-4 space-y-2">
+                        <div className="text-sm font-medium text-zinc-200 text-center">
+                            Meerdere spelers op {SCHOPPENVROUWEN_TARGET_SCORE}+ — wie heeft de ronde afgesloten?{" "}
+                            <span className="text-zinc-500 font-normal">(uitgelegd)</span>
+                        </div>
+                        <p className="text-xs text-zinc-500 text-center px-1">
+                            Diegene wint, niet degene met de hoogste score. Tik een naam om te bevestigen.
+                        </p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {playerOrder.map((pid) => (
+                                <Button
+                                    key={pid}
+                                    type="button"
+                                    variant={closerHighlightId === pid ? "default" : "outline"}
+                                    size="sm"
+                                    className={cn(
+                                        "rounded-xl",
+                                        closerHighlightId === pid
+                                            ? "bg-rose-600 hover:bg-rose-700"
+                                            : "border-zinc-700 text-zinc-300"
+                                    )}
+                                    onClick={() => {
+                                        setRoundClosedBy({ roundIndex, playerId: pid })
+                                        setCloserConfirmed(true)
+                                    }}
+                                >
+                                    {players[pid]?.name ?? `#${pid}`}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Done button */}
                 <Button
                     onClick={handleDone}
                     className={cn(
                         "w-full text-lg font-bold h-14 rounded-xl",
-                        isViewedRoundComplete
-                            ? "bg-rose-600 hover:bg-rose-700"
-                            : "bg-zinc-800 text-zinc-500"
+                        canFinishRound ? "bg-rose-600 hover:bg-rose-700" : "bg-zinc-800 text-zinc-500"
                     )}
-                    disabled={!isViewedRoundComplete}
+                    disabled={!canFinishRound}
                 >
                     {doneButtonLabel}
                 </Button>

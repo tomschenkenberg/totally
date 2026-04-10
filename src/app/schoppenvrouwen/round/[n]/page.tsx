@@ -132,6 +132,38 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         }
     }, [isHydrated, game, roundNumber, router])
 
+    const roundIndex = !isNaN(roundNumber) ? roundNumber - 1 : -1
+    const isValidRound =
+        !!game &&
+        !isNaN(roundNumber) &&
+        roundIndex >= 0 &&
+        roundIndex < game.rounds.length
+
+    const viewedRound =
+        isValidRound && game ? game.rounds[roundIndex] : null
+    const playerOrder = game?.playerOrder ?? []
+    const orderLen = playerOrder.length
+
+    const isViewedRoundComplete =
+        viewedRound !== null &&
+        Object.keys(viewedRound.scores).length === playerOrder.length
+
+    const lastFullyScoredRoundIndex = game
+        ? getSchoppenvrouwenLastFullyScoredRoundIndex(game)
+        : -1
+    const playersAtOrOverTarget = playerOrder.filter(
+        (id) => getPlayerTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE
+    )
+    const shouldAskWhoClosed =
+        viewedRound !== null &&
+        isViewedRoundComplete &&
+        roundIndex === lastFullyScoredRoundIndex &&
+        playersAtOrOverTarget.length >= 2
+
+    useEffect(() => {
+        setCloserConfirmed(false)
+    }, [roundIndex, shouldAskWhoClosed])
+
     if (!isHydrated || !game) {
         return (
             <div className="flex items-center justify-center py-16">
@@ -139,10 +171,6 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
             </div>
         )
     }
-
-    const roundIndex = roundNumber - 1
-    const isValidRound =
-        !isNaN(roundNumber) && roundIndex >= 0 && roundIndex < game.rounds.length
 
     if (!isValidRound) {
         return (
@@ -152,33 +180,16 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         )
     }
 
-    const viewedRound = game.rounds[roundIndex]
-    const playerOrder = game.playerOrder
-    const orderLen = playerOrder.length
+    const activeRound = viewedRound!
+
     const displayDealerIndex =
         orderLen > 0
             ? (game.dealerIndex - (game.currentRoundIndex - roundIndex) + orderLen) % orderLen
             : 0
     const dealerId = orderLen > 0 ? playerOrder[displayDealerIndex] : undefined
 
-    const isViewedRoundComplete =
-        Object.keys(viewedRound.scores).length === playerOrder.length
-
-    const lastFullyScoredRoundIndex = getSchoppenvrouwenLastFullyScoredRoundIndex(game)
-    const playersAtOrOverTarget = playerOrder.filter(
-        (id) => getPlayerTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE
-    )
-    const shouldAskWhoClosed =
-        isViewedRoundComplete &&
-        roundIndex === lastFullyScoredRoundIndex &&
-        playersAtOrOverTarget.length >= 2
-
-    useEffect(() => {
-        setCloserConfirmed(false)
-    }, [roundIndex, shouldAskWhoClosed])
-
     const closerHighlightId =
-        viewedRound.roundClosedByPlayerId ??
+        activeRound.roundClosedByPlayerId ??
         (roundIndex === lastFullyScoredRoundIndex ? game.lastRoundClosedByPlayerId : undefined) ??
         playerOrder[0]
 
@@ -237,10 +248,10 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                             key={`${playerId}-${roundIndex}`}
                             playerId={playerId}
                             player={players[playerId]}
-                            currentScore={viewedRound.scores[playerId]}
+                            currentScore={activeRound.scores[playerId]}
                             totalScore={
                                 getPlayerTotal(playerId) +
-                                (!isViewedRoundComplete ? (viewedRound.scores[playerId] ?? 0) : 0)
+                                (!isViewedRoundComplete ? (activeRound.scores[playerId] ?? 0) : 0)
                             }
                             onScoreChange={(score) =>
                                 setScoreForRound({ roundIndex, playerId, score })

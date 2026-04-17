@@ -12,7 +12,8 @@ import {
     setSchoppenvrouwenScoreForRoundAtom,
     SCHOPPENVROUWEN_TARGET_SCORE,
     SCHOPPENVROUWEN_CARDS_PER_PLAYER,
-    isSchoppenvrouwenRoundFullyScored
+    isSchoppenvrouwenRoundFullyScored,
+    isValidSchoppenvrouwenGame
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
@@ -46,10 +47,16 @@ export default function SchoppenvrouwenScoreboard() {
         if (!isHydrated) return
         if (!game) {
             router.replace("/schoppenvrouwen/setup")
+            return
         }
-    }, [game, router, isHydrated])
+        if (!isValidSchoppenvrouwenGame(game)) {
+            console.warn("Invalid schoppenvrouwen game shape in storage — resetting", game)
+            resetGame()
+            router.replace("/schoppenvrouwen/setup")
+        }
+    }, [game, router, isHydrated, resetGame])
 
-    if (!isHydrated || !game) {
+    if (!isHydrated || !game || !isValidSchoppenvrouwenGame(game)) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>
@@ -211,7 +218,9 @@ export default function SchoppenvrouwenScoreboard() {
                                         >
                                             {index + 1}
                                         </span>
-                                        <span className="font-semibold text-white">{item.player.name}</span>
+                                        <span className="font-semibold text-white">
+                                            {item.player?.name?.trim() || `Speler #${item.id}`}
+                                        </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span

@@ -3,9 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { useEffect } from "react"
 
-const GAME_STORAGE_KEYS = ["schoppenvrouwenGame", "boerenBridgeGame", "gameMode"]
-
-export default function Error({
+export default function SchoppenvrouwenError({
     error,
     reset
 }: {
@@ -13,23 +11,22 @@ export default function Error({
     reset: () => void
 }) {
     useEffect(() => {
-        console.error("App error boundary:", error)
+        console.error("Schoppenvrouwen error boundary:", error)
     }, [error])
 
-    const nukeGameData = () => {
+    const resetSchoppenvrouwenOnly = () => {
         try {
-            for (const key of GAME_STORAGE_KEYS) {
-                localStorage.removeItem(key)
-            }
+            localStorage.removeItem("schoppenvrouwenGame")
+            localStorage.removeItem("gameMode")
         } catch {
-            // ignore: private mode / disabled storage
+            // ignore
         }
         window.location.href = "/"
     }
 
     return (
         <div className="text-center p-6 text-zinc-200 space-y-4">
-            <h2 className="text-xl font-bold">Er ging iets mis</h2>
+            <h2 className="text-xl font-bold">Schoppenvrouwen kon niet geladen worden</h2>
             <p className="text-sm text-zinc-400 wrap-break-word whitespace-pre-wrap max-w-md mx-auto">
                 {error?.message || "Onbekende fout"}
                 {error?.digest ? `\n(digest: ${error.digest})` : ""}
@@ -38,14 +35,14 @@ export default function Error({
                 <Button onClick={() => reset()}>Probeer opnieuw</Button>
                 <Button
                     variant="outline"
-                    onClick={nukeGameData}
+                    onClick={resetSchoppenvrouwenOnly}
                     className="border-zinc-700"
                 >
-                    Reset spel-data
+                    Reset Schoppenvrouwen
                 </Button>
             </div>
             <p className="text-xs text-zinc-500 max-w-md mx-auto">
-                "Reset spel-data" wist lopende spellen uit deze browser maar laat je spelerslijst staan.
+                Dit wist alleen je lopende Schoppenvrouwen-spel.
             </p>
         </div>
     )

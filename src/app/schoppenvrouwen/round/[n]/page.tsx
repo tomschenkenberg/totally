@@ -12,6 +12,8 @@ import {
     isSchoppenvrouwenFinishedAtom,
     getSchoppenvrouwenPlayerTotalAtom,
     getSchoppenvrouwenLastFullyScoredRoundIndex,
+    isValidSchoppenvrouwenGame,
+    resetSchoppenvrouwenGameAtom,
     SCHOPPENVROUWEN_CARDS_PER_PLAYER,
     SCHOPPENVROUWEN_TARGET_SCORE
 } from "@/lib/atoms/game"
@@ -31,11 +33,12 @@ const InputPlayerScore = ({
     onScoreChange
 }: {
     playerId: number
-    player: Player
+    player: Player | undefined
     currentScore: number | undefined
     totalScore: number
     onScoreChange: (score: number) => void
 }) => {
+    const displayName = player?.name?.trim() || `Speler #${playerId}`
     const [inputValue, setInputValue] = useState(currentScore?.toString() || "")
 
     useEffect(() => {
@@ -65,7 +68,7 @@ const InputPlayerScore = ({
     return (
         <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex flex-col min-w-0">
-                <span className="text-base font-semibold text-white truncate">{player.name}</span>
+                <span className="text-base font-semibold text-white truncate">{displayName}</span>
                 <span className="text-xs text-zinc-500 font-mono">
                     Totaal:{" "}
                     <span className={scoreTextClass(totalScore)}>{totalScore}</span>
@@ -104,6 +107,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
     const setScoreForRound = useSetAtom(setSchoppenvrouwenScoreForRoundAtom)
     const setRoundClosedBy = useSetAtom(setSchoppenvrouwenRoundClosedByForRoundAtom)
     const advanceRound = useSetAtom(advanceSchoppenvrouwenRoundAtom)
+    const resetGame = useSetAtom(resetSchoppenvrouwenGameAtom)
     const isGameFinished = useAtomValue(isSchoppenvrouwenFinishedAtom)
     const getPlayerTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
     const [isHydrated, setIsHydrated] = useState(false)
@@ -117,8 +121,14 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         if (!isHydrated) return
         if (!game) {
             router.replace("/schoppenvrouwen/setup")
+            return
         }
-    }, [game, router, isHydrated])
+        if (!isValidSchoppenvrouwenGame(game)) {
+            console.warn("Invalid schoppenvrouwen game shape in storage — resetting", game)
+            resetGame()
+            router.replace("/schoppenvrouwen/setup")
+        }
+    }, [game, router, isHydrated, resetGame])
 
     useEffect(() => {
         if (!isHydrated || !game) return
@@ -164,7 +174,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         setCloserConfirmed(false)
     }, [roundIndex, shouldAskWhoClosed])
 
-    if (!isHydrated || !game) {
+    if (!isHydrated || !game || !isValidSchoppenvrouwenGame(game)) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>

@@ -63,9 +63,9 @@ export const hasActiveGameAtom = atom((get) => {
     }
     
     // Check Schoppenvrouwen - active if game exists and has any scores recorded
-    if (schoppenvrouwenGame) {
+    if (schoppenvrouwenGame && Array.isArray(schoppenvrouwenGame.rounds)) {
         const hasProgress = schoppenvrouwenGame.rounds.some(
-            round => Object.keys(round.scores).length > 0
+            round => round?.scores && Object.keys(round.scores).length > 0
         )
         if (hasProgress) return { active: true, mode: "schoppenvrouwen" as GameMode }
     }
@@ -352,7 +352,28 @@ export const setDealerIndexAtom = atom(null, (get, set, dealerIndex: number) => 
 // SCHOPPENVROUWEN ATOMS
 // ============================================
 
+/**
+ * Defensive shape check for values loaded from localStorage — older app versions or
+ * corrupted mobile storage may produce something that's technically a JSON object but
+ * missing required fields. Used to avoid crashing on `Object.keys(round.scores)` etc.
+ */
+export function isValidSchoppenvrouwenGame(value: unknown): value is SchoppenvrouwenGame {
+    if (!value || typeof value !== "object") return false
+    const g = value as Partial<SchoppenvrouwenGame>
+    if (!Array.isArray(g.playerOrder)) return false
+    if (!g.playerOrder.every((id) => typeof id === "number")) return false
+    if (typeof g.dealerIndex !== "number") return false
+    if (typeof g.currentRoundIndex !== "number") return false
+    if (!Array.isArray(g.rounds)) return false
+    for (const r of g.rounds) {
+        if (!r || typeof r !== "object") return false
+        if (!r.scores || typeof r.scores !== "object") return false
+    }
+    return true
+}
+
 export function isSchoppenvrouwenRoundFullyScored(round: SchoppenvrouwenRound, playerCount: number): boolean {
+    if (!round || !round.scores) return false
     return Object.keys(round.scores).length === playerCount
 }
 

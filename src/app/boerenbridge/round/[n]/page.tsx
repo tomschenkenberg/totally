@@ -2,20 +2,16 @@
 
 import { useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAtomValue } from "jotai"
-import { boerenBridgeGameAtom } from "@/lib/atoms/game"
+import { useValidGame } from "@/hooks/use-valid-game"
 
 export default function RoundPage() {
     const params = useParams()
     const router = useRouter()
     const roundNumber = Number(params.n)
-    const game = useAtomValue(boerenBridgeGameAtom)
+    const { hydrated, game } = useValidGame("boerenbridge")
 
     useEffect(() => {
-        if (!game) {
-            router.push("/boerenbridge/setup")
-            return
-        }
+        if (!hydrated || !game) return
 
         const expectedRound = game.currentRoundIndex + 1
         if (roundNumber !== expectedRound) {
@@ -35,7 +31,7 @@ export default function RoundPage() {
         } else {
             router.push("/boerenbridge")
         }
-    }, [game, roundNumber, router])
+    }, [hydrated, game, roundNumber, router])
 
     return (
         <div className="flex items-center justify-center py-16">

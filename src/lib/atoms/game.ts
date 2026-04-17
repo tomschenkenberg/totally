@@ -1,5 +1,5 @@
 import { atom } from "jotai"
-import { atomWithStorage } from "jotai/utils"
+import { validatedAtomWithStorage } from "./storage"
 
 // Game mode types
 export type GameMode = "generic" | "boerenbridge" | "schoppenvrouwen"
@@ -26,6 +26,12 @@ export interface SchoppenvrouwenRound {
     scores: { [playerId: number]: number }
     /** Who ended the round in play (uitgelegd / all cards down). Tie-break when multiple players are 1000+. */
     roundClosedByPlayerId?: number | null
+    /**
+     * Dealer index (into SchoppenvrouwenGame.playerOrder) for this specific round.
+     * Added in schema v1 so historical rounds don't have to be reconstructed from
+     * game.dealerIndex - game.currentRoundIndex, which is fragile after edits.
+     */
+    dealerIndex?: number
 }
 
 export interface SchoppenvrouwenGame {
@@ -41,12 +47,66 @@ export interface SchoppenvrouwenGame {
 export const SCHOPPENVROUWEN_TARGET_SCORE = 1000
 export const SCHOPPENVROUWEN_CARDS_PER_PLAYER = 13
 
+// --- Validators ---
+
+function isNumericIdMap(v: unknown): v is { [id: number]: number } {
+    if (!v || typeof v !== "object" || Array.isArray(v)) return false
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        if (!/^-?\d+$/.test(k)) return false
+        if (typeof val !== "number" || !Number.isFinite(val)) return false
+    }
+    return true
+}
+
+function isValidGameMode(v: unknown): v is GameMode | null {
+    return v === null || v === "generic" || v === "boerenbridge" || v === "schoppenvrouwen"
+}
+
+/**
+ * Defensive shape check for Boerenbridge — rejects out-of-bounds indexes so
+ * subsequent array access in render code can't throw.
+ */
+export function isValidBoerenBridgeGame(value: unknown): value is BoerenBridgeGame {
+    if (value === null) return true
+    if (!value || typeof value !== "object") return false
+    const g = value as Partial<BoerenBridgeGame>
+    if (!Array.isArray(g.playerOrder)) return false
+    if (!g.playerOrder.every((id) => typeof id === "number" && Number.isFinite(id))) return false
+    if (typeof g.dealerIndex !== "number") return false
+    if (g.playerOrder.length > 0 && (g.dealerIndex < 0 || g.dealerIndex >= g.playerOrder.length)) return false
+    if (typeof g.currentRoundIndex !== "number") return false
+    if (g.currentRoundIndex < 0 || g.currentRoundIndex > BOEREN_BRIDGE_ROUNDS.length) return false
+    if (!Array.isArray(g.rounds)) return false
+    for (const r of g.rounds) {
+        if (!r || typeof r !== "object") return false
+        if (typeof r.cards !== "number") return false
+        if (!isNumericIdMap(r.bids)) return false
+        if (!isNumericIdMap(r.tricks)) return false
+    }
+    return true
+}
+
 // Base atoms
-export const gameModeAtom = atomWithStorage<GameMode | null>("gameMode", null)
+export const gameModeAtom = validatedAtomWithStorage<GameMode | null>(
+    "gameMode",
+    null,
+    isValidGameMode
+)
 
-export const boerenBridgeGameAtom = atomWithStorage<BoerenBridgeGame | null>("boerenBridgeGame", null)
+export const boerenBridgeGameAtom = validatedAtomWithStorage<BoerenBridgeGame | null>(
+    "boerenBridgeGame",
+    null,
+    isValidBoerenBridgeGame
+)
 
-export const schoppenvrouwenGameAtom = atomWithStorage<SchoppenvrouwenGame | null>("schoppenvrouwenGame", null)
+// Forward-declared validator + migrator live below; we bind them here via a
+// thin wrapper so declaration order doesn't matter.
+export const schoppenvrouwenGameAtom = validatedAtomWithStorage<SchoppenvrouwenGame | null>(
+    "schoppenvrouwenGame",
+    null,
+    (v): v is SchoppenvrouwenGame | null => isValidSchoppenvrouwenGame(v),
+    (v) => migrateSchoppenvrouwenGame(v)
+)
 
 // Check if any game is currently active (has progress)
 export const hasActiveGameAtom = atom((get) => {
@@ -356,25 +416,80 @@ export const setDealerIndexAtom = atom(null, (get, set, dealerIndex: number) => 
  * Defensive shape check for values loaded from localStorage — older app versions or
  * corrupted mobile storage may produce something that's technically a JSON object but
  * missing required fields. Used to avoid crashing on `Object.keys(round.scores)` etc.
+ *
+ * Also bounds-checks `dealerIndex` and `currentRoundIndex` against `playerOrder.length`
+ * and `rounds.length`. Accepts `null` (no active game).
  */
 export function isValidSchoppenvrouwenGame(value: unknown): value is SchoppenvrouwenGame {
+    if (value === null) return true
     if (!value || typeof value !== "object") return false
     const g = value as Partial<SchoppenvrouwenGame>
     if (!Array.isArray(g.playerOrder)) return false
-    if (!g.playerOrder.every((id) => typeof id === "number")) return false
+    if (!g.playerOrder.every((id) => typeof id === "number" && Number.isFinite(id))) return false
     if (typeof g.dealerIndex !== "number") return false
-    if (typeof g.currentRoundIndex !== "number") return false
+    if (g.playerOrder.length > 0 && (g.dealerIndex < 0 || g.dealerIndex >= g.playerOrder.length)) return false
+    if (typeof g.currentRoundIndex !== "number" || g.currentRoundIndex < 0) return false
     if (!Array.isArray(g.rounds)) return false
+    if (g.currentRoundIndex > g.rounds.length) return false
     for (const r of g.rounds) {
         if (!r || typeof r !== "object") return false
-        if (!r.scores || typeof r.scores !== "object") return false
+        if (!isNumericIdMap(r.scores)) return false
+        if (
+            r.dealerIndex !== undefined &&
+            (typeof r.dealerIndex !== "number" ||
+                (g.playerOrder.length > 0 && (r.dealerIndex < 0 || r.dealerIndex >= g.playerOrder.length)))
+        )
+            return false
     }
     return true
+}
+
+/**
+ * Back-fill `dealerIndex` on each round. Before v1 only the game-level dealerIndex
+ * existed and historical dealers had to be reconstructed via (game.dealerIndex -
+ * (currentRoundIndex - i)) mod N, which is wrong if rounds have been edited or
+ * inserted. We save the derived value once so the rest of the app can read it
+ * directly.
+ */
+function migrateSchoppenvrouwenGame(value: unknown): unknown {
+    if (value === null || typeof value !== "object") return value
+    const g = value as Partial<SchoppenvrouwenGame> & Record<string, unknown>
+    if (!Array.isArray(g.playerOrder) || !Array.isArray(g.rounds)) return value
+    const n = g.playerOrder.length
+    if (n === 0) return value
+    if (typeof g.dealerIndex !== "number" || typeof g.currentRoundIndex !== "number") return value
+
+    const needsDealerBackfill = g.rounds.some(
+        (r) => r && typeof r === "object" && (r as SchoppenvrouwenRound).dealerIndex === undefined
+    )
+    if (!needsDealerBackfill) return value
+
+    const initialDealer = ((g.dealerIndex - g.currentRoundIndex) % n + n) % n
+    const rounds = g.rounds.map((r, i) => {
+        if (!r || typeof r !== "object") return r
+        const round = r as SchoppenvrouwenRound
+        if (round.dealerIndex !== undefined) return round
+        return { ...round, dealerIndex: (initialDealer + i) % n }
+    })
+    return { ...g, rounds }
 }
 
 export function isSchoppenvrouwenRoundFullyScored(round: SchoppenvrouwenRound, playerCount: number): boolean {
     if (!round || !round.scores) return false
     return Object.keys(round.scores).length === playerCount
+}
+
+/**
+ * Dealer index for a specific round. Prefers the per-round field written since v1,
+ * falls back to back-calculation from current game state (legacy games that haven't
+ * been written to since migration).
+ */
+export function getSchoppenvrouwenRoundDealerIndex(game: SchoppenvrouwenGame, roundIndex: number): number {
+    const n = game.playerOrder.length
+    if (n === 0) return 0
+    const round = game.rounds[roundIndex]
+    if (round && typeof round.dealerIndex === "number") return round.dealerIndex
+    return ((game.dealerIndex - (game.currentRoundIndex - roundIndex)) % n + n) % n
 }
 
 /** Last fully scored round index, or -1 */
@@ -471,7 +586,8 @@ export const initSchoppenvrouwenGameAtom = atom(
     null,
     (get, set, { playerOrder, dealerIndex }: { playerOrder: number[]; dealerIndex: number }) => {
         const initialRound: SchoppenvrouwenRound = {
-            scores: {}
+            scores: {},
+            dealerIndex
         }
 
         set(schoppenvrouwenGameAtom, {
@@ -577,7 +693,8 @@ export const advanceSchoppenvrouwenRoundAtom = atom(null, (get, set) => {
 
     // Create new round
     const newRound: SchoppenvrouwenRound = {
-        scores: {}
+        scores: {},
+        dealerIndex: nextDealerIndex
     }
 
     set(schoppenvrouwenGameAtom, {

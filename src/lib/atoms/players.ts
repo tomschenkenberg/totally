@@ -1,5 +1,5 @@
 import { atom } from "jotai"
-import { atomWithStorage } from "jotai/utils"
+import { validatedAtomWithStorage } from "./storage"
 
 // Types
 export type Scores = { [round: number]: number }
@@ -15,6 +15,54 @@ export type Players = { [id: number]: Player }
 
 export function isPlayerActive(player: Player): boolean {
     return player.active !== false
+}
+
+/**
+ * Shape check for the `players` atom loaded from localStorage. Rejects anything
+ * that would crash the roster / scoring code (non-numeric ids, non-numeric scores,
+ * missing `name`). Unknown genders are coerced in migration to "x" before we get
+ * here; this is pure validation.
+ */
+export function isValidPlayers(value: unknown): value is Players {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        if (!/^-?\d+$/.test(k)) return false
+        if (!v || typeof v !== "object") return false
+        const p = v as Partial<Player>
+        if (typeof p.name !== "string") return false
+        if (p.gender !== "m" && p.gender !== "v" && p.gender !== "x") return false
+        if (!p.scores || typeof p.scores !== "object" || Array.isArray(p.scores)) return false
+        for (const [sk, sv] of Object.entries(p.scores as Record<string, unknown>)) {
+            if (!/^-?\d+$/.test(sk)) return false
+            if (typeof sv !== "number" || !Number.isFinite(sv)) return false
+        }
+        if (p.active !== undefined && typeof p.active !== "boolean") return false
+    }
+    return true
+}
+
+/**
+ * Coerce unknown gender strings / missing fields to sensible defaults so the
+ * validator doesn't have to reject an otherwise-recoverable players object.
+ */
+function migratePlayers(value: unknown): unknown {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value
+    let changed = false
+    const out: Record<string, Player> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        if (!v || typeof v !== "object") {
+            changed = true
+            continue
+        }
+        const p = v as Partial<Player> & Record<string, unknown>
+        const name = typeof p.name === "string" ? p.name : ""
+        const gender: Gender = p.gender === "m" || p.gender === "v" ? p.gender : "x"
+        const scores = p.scores && typeof p.scores === "object" && !Array.isArray(p.scores) ? (p.scores as Scores) : {}
+        const active = typeof p.active === "boolean" ? p.active : undefined
+        if (name !== p.name || gender !== p.gender || scores !== p.scores) changed = true
+        out[k] = active === undefined ? { name, gender, scores } : { name, gender, scores, active }
+    }
+    return changed ? out : value
 }
 
 /** Players with a non-empty name who are toggled on (for games + generic score entry). */
@@ -64,8 +112,7 @@ export function sortedUnionRoundKeys(players: Players): number[] {
 }
 
 // Base atoms
-export const playersAtom = atomWithStorage<Players>("players", {})
-export const syncWithCodeAtom = atomWithStorage<string | null>("syncWithCode", null)
+export const playersAtom = validatedAtomWithStorage<Players>("players", {}, isValidPlayers, migratePlayers)
 
 // Derived atoms
 export const getPlayerNameAtom = atom((get) => (id: number) => get(playersAtom)[id]?.name || "")

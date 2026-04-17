@@ -4,7 +4,6 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
 import {
-    schoppenvrouwenGameAtom,
     getSchoppenvrouwenPlayerTotalAtom,
     isSchoppenvrouwenFinishedAtom,
     resetSchoppenvrouwenGameAtom,
@@ -12,51 +11,33 @@ import {
     setSchoppenvrouwenScoreForRoundAtom,
     SCHOPPENVROUWEN_TARGET_SCORE,
     SCHOPPENVROUWEN_CARDS_PER_PLAYER,
-    isSchoppenvrouwenRoundFullyScored,
-    isValidSchoppenvrouwenGame
+    isSchoppenvrouwenRoundFullyScored
 } from "@/lib/atoms/game"
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
 import { cn, scoreTextClass } from "@/lib/utils"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
 import { StandUpdate } from "@/components/stand-update"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useValidGame } from "@/hooks/use-valid-game"
 
 export default function SchoppenvrouwenScoreboard() {
     const router = useRouter()
-    const game = useAtomValue(schoppenvrouwenGameAtom)
+    const { hydrated, game } = useValidGame("schoppenvrouwen")
     const players = useAtomValue(playersAtom)
     const getPlayerTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
     const isGameFinished = useAtomValue(isSchoppenvrouwenFinishedAtom)
     const winnerId = useAtomValue(getSchoppenvrouwenWinnerAtom)
     const resetGame = useSetAtom(resetSchoppenvrouwenGameAtom)
     const setScoreForRound = useSetAtom(setSchoppenvrouwenScoreForRoundAtom)
-    const [isHydrated, setIsHydrated] = useState(false)
     const [editingRoundIndex, setEditingRoundIndex] = useState<number | null>(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editScores, setEditScores] = useState<{ [playerId: number]: string }>({})
 
-    useEffect(() => {
-        setIsHydrated(true)
-    }, [])
-
-    useEffect(() => {
-        if (!isHydrated) return
-        if (!game) {
-            router.replace("/schoppenvrouwen/setup")
-            return
-        }
-        if (!isValidSchoppenvrouwenGame(game)) {
-            console.warn("Invalid schoppenvrouwen game shape in storage — resetting", game)
-            resetGame()
-            router.replace("/schoppenvrouwen/setup")
-        }
-    }, [game, router, isHydrated, resetGame])
-
-    if (!isHydrated || !game || !isValidSchoppenvrouwenGame(game)) {
+    if (!hydrated || !game) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>
@@ -325,9 +306,14 @@ export default function SchoppenvrouwenScoreboard() {
                                     {players[playerId]?.name}
                                 </Label>
                                 <Input
-                                    type="number"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="-?[0-9]*"
+                                    autoComplete="off"
+                                    enterKeyHint="done"
                                     value={editScores[playerId] || "0"}
                                     onChange={(e) => setEditScores({ ...editScores, [playerId]: e.target.value })}
+                                    onFocus={(e) => e.currentTarget.select()}
                                     className="bg-zinc-800 border-zinc-700 text-white"
                                 />
                             </div>

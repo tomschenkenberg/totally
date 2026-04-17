@@ -4,7 +4,6 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { useParams, useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
 import {
-    boerenBridgeGameAtom,
     getCurrentRoundCardsAtom,
     getCurrentDealerIdAtom,
     getBiddingOrderAtom,
@@ -18,13 +17,14 @@ import Title from "@/components/title"
 import { cn } from "@/lib/utils"
 import { useEffect, useState } from "react"
 import { Crown, AlertTriangle, Check } from "lucide-react"
+import { useValidGame } from "@/hooks/use-valid-game"
 
 export default function BiddingPage() {
     const params = useParams()
     const router = useRouter()
     const roundNumber = Number(params.n)
 
-    const game = useAtomValue(boerenBridgeGameAtom)
+    const { hydrated, game } = useValidGame("boerenbridge")
     const players = useAtomValue(playersAtom)
     const cards = useAtomValue(getCurrentRoundCardsAtom)
     const dealerId = useAtomValue(getCurrentDealerIdAtom)
@@ -34,36 +34,21 @@ export default function BiddingPage() {
     const clearBid = useSetAtom(clearBidAtom)
 
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
-    const [isHydrated, setIsHydrated] = useState(false)
     const [submittingBid, setSubmittingBid] = useState<{ bid: number; playerId: number } | null>(null)
 
-    useEffect(() => {
-        setIsHydrated(true)
-    }, [])
-
     const calculatedBidderIndex = currentRound && biddingOrder.length > 0
-        ? biddingOrder.findIndex((playerId) => {
-            const hasBid = playerId in currentRound.bids || String(playerId) in currentRound.bids
-            return !hasBid
-        })
+        ? biddingOrder.findIndex((playerId) => !(playerId in currentRound.bids))
         : 0
     const currentBidderIndex = calculatedBidderIndex
 
     useEffect(() => {
-        if (!isHydrated || !game || !currentRound) return
+        if (!hydrated || !game || !currentRound) return
         if (roundNumber !== game.currentRoundIndex + 1) {
             router.replace(`/boerenbridge/round/${game.currentRoundIndex + 1}/bid`)
         }
-    }, [game, currentRound, roundNumber, router, isHydrated])
+    }, [hydrated, game, currentRound, roundNumber, router])
 
-    useEffect(() => {
-        if (!isHydrated) return
-        if (!game) {
-            router.replace("/boerenbridge/setup")
-        }
-    }, [isHydrated, game, router])
-
-    if (!isHydrated || !game || !currentRound) {
+    if (!hydrated || !game || !currentRound) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>
@@ -97,22 +82,21 @@ export default function BiddingPage() {
         allBidsComplete &&
         boerenBridgeBidsSumEqualsCards(currentRound, cards, biddingOrder.length)
 
-    const handleBid = async (bid: number) => {
+    const handleBid = (bid: number) => {
         if (submittingBid) return
 
         const playerId = editingPlayerId ?? currentBidderId
         if (playerId === null) return
 
         const wasEditing = editingPlayerId !== null
+        // Brief visual confirmation — cleared on the next frame so the UI
+        // updates immediately (previously gated behind a 750ms delay).
         setSubmittingBid({ bid, playerId })
-
-        await new Promise((resolve) => setTimeout(resolve, 750))
-
         setBid({ playerId, bid })
         if (wasEditing) {
             setEditingPlayerId(null)
         }
-        setSubmittingBid(null)
+        requestAnimationFrame(() => setSubmittingBid(null))
     }
 
     const handleEditPlayer = (playerId: number) => {

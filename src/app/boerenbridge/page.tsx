@@ -4,7 +4,6 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
 import {
-    boerenBridgeGameAtom,
     getPlayerBoerenBridgeTotalAtom,
     calculateBoerenBridgeScore,
     isGameFinishedAtom,
@@ -14,34 +13,23 @@ import {
 import { Button } from "@/components/ui/button"
 import Title from "@/components/title"
 import { cn, scoreTextClass } from "@/lib/utils"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
 import { EditRoundModal } from "@/components/edit-round-modal"
 import { StandUpdate } from "@/components/stand-update"
+import { useValidGame } from "@/hooks/use-valid-game"
 
 export default function BoerenBridgeScoreboard() {
     const router = useRouter()
-    const game = useAtomValue(boerenBridgeGameAtom)
+    const { hydrated, game } = useValidGame("boerenbridge")
     const players = useAtomValue(playersAtom)
     const getPlayerTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
     const isGameFinished = useAtomValue(isGameFinishedAtom)
     const resetGame = useSetAtom(resetBoerenBridgeGameAtom)
-    const [isHydrated, setIsHydrated] = useState(false)
     const [editingRoundIndex, setEditingRoundIndex] = useState<number | null>(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-    useEffect(() => {
-        setIsHydrated(true)
-    }, [])
-
-    useEffect(() => {
-        if (!isHydrated) return
-        if (!game) {
-            router.replace("/boerenbridge/setup")
-        }
-    }, [game, router, isHydrated])
-
-    if (!isHydrated || !game) {
+    if (!hydrated || !game) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>

@@ -121,6 +121,11 @@ function RosterRow({ id, player }: { id: number; player: Player }) {
                         placeholder="Naam"
                         value={player.name}
                         onChange={(e) => handleNameChange(e.target.value)}
+                        autoComplete="off"
+                        autoCapitalize="words"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        enterKeyHint="done"
                     />
                     {player.name ? (
                         <button

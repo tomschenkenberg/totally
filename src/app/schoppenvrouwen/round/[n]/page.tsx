@@ -2,18 +2,16 @@
 
 import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
-import { use, useState, useEffect } from "react"
+import { use, useState, useEffect, useRef, forwardRef } from "react"
 import { playersAtom, Player } from "@/lib/atoms/players"
 import {
-    schoppenvrouwenGameAtom,
     setSchoppenvrouwenScoreForRoundAtom,
     setSchoppenvrouwenRoundClosedByForRoundAtom,
     advanceSchoppenvrouwenRoundAtom,
     isSchoppenvrouwenFinishedAtom,
     getSchoppenvrouwenPlayerTotalAtom,
     getSchoppenvrouwenLastFullyScoredRoundIndex,
-    isValidSchoppenvrouwenGame,
-    resetSchoppenvrouwenGameAtom,
+    getSchoppenvrouwenRoundDealerIndex,
     SCHOPPENVROUWEN_CARDS_PER_PLAYER,
     SCHOPPENVROUWEN_TARGET_SCORE
 } from "@/lib/atoms/game"
@@ -22,22 +20,24 @@ import { Input } from "@/components/ui/input"
 import Title from "@/components/title"
 import { Crown } from "lucide-react"
 import { cn, scoreTextClass } from "@/lib/utils"
+import { useValidGame } from "@/hooks/use-valid-game"
 
 type Params = Promise<{ n: string }>
 
-const InputPlayerScore = ({
-    playerId,
-    player,
-    currentScore,
-    totalScore,
-    onScoreChange
-}: {
+interface InputPlayerScoreProps {
     playerId: number
     player: Player | undefined
     currentScore: number | undefined
     totalScore: number
+    isLast: boolean
     onScoreChange: (score: number) => void
-}) => {
+    onSubmitNext: () => void
+}
+
+const InputPlayerScore = forwardRef<HTMLInputElement, InputPlayerScoreProps>(function InputPlayerScore(
+    { playerId, player, currentScore, totalScore, isLast, onScoreChange, onSubmitNext },
+    ref
+) {
     const displayName = player?.name?.trim() || `Speler #${playerId}`
     const [inputValue, setInputValue] = useState(currentScore?.toString() || "")
 
@@ -65,6 +65,13 @@ const InputPlayerScore = ({
         onScoreChange(parseInt(newValue, 10))
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.preventDefault()
+            onSubmitNext()
+        }
+    }
+
     return (
         <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex flex-col min-w-0">
@@ -76,12 +83,18 @@ const InputPlayerScore = ({
             </div>
             <div className="flex items-center gap-2 shrink-0">
                 <Input
+                    ref={ref}
                     className="text-lg font-semibold font-mono w-20 h-10 bg-zinc-800 border-zinc-700 text-white text-center rounded-xl"
-                    type="number"
-                    inputMode="decimal"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="-?[0-9]*"
+                    autoComplete="off"
+                    enterKeyHint={isLast ? "done" : "next"}
                     placeholder="0"
                     value={inputValue}
                     onChange={handleScoreChange}
+                    onKeyDown={handleKeyDown}
+                    onFocus={(e) => e.currentTarget.select()}
                 />
                 <Button
                     variant="outline"
@@ -89,49 +102,32 @@ const InputPlayerScore = ({
                     onClick={toggleSign}
                     disabled={inputValue === ""}
                     className="border-zinc-700 text-zinc-400 hover:text-white h-10 w-10 p-0 rounded-xl"
+                    aria-label="Wissel teken"
                 >
                     +/-
                 </Button>
             </div>
         </div>
     )
-}
+})
 
 export default function SchoppenvrouwenRoundPage({ params }: { params: Params }) {
     const { n } = use(params)
     const roundNumber = parseInt(n, 10)
 
     const router = useRouter()
-    const game = useAtomValue(schoppenvrouwenGameAtom)
+    const { hydrated, game } = useValidGame("schoppenvrouwen")
     const players = useAtomValue(playersAtom)
     const setScoreForRound = useSetAtom(setSchoppenvrouwenScoreForRoundAtom)
     const setRoundClosedBy = useSetAtom(setSchoppenvrouwenRoundClosedByForRoundAtom)
     const advanceRound = useSetAtom(advanceSchoppenvrouwenRoundAtom)
-    const resetGame = useSetAtom(resetSchoppenvrouwenGameAtom)
     const isGameFinished = useAtomValue(isSchoppenvrouwenFinishedAtom)
     const getPlayerTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
-    const [isHydrated, setIsHydrated] = useState(false)
     const [closerConfirmed, setCloserConfirmed] = useState(false)
+    const inputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
     useEffect(() => {
-        setIsHydrated(true)
-    }, [])
-
-    useEffect(() => {
-        if (!isHydrated) return
-        if (!game) {
-            router.replace("/schoppenvrouwen/setup")
-            return
-        }
-        if (!isValidSchoppenvrouwenGame(game)) {
-            console.warn("Invalid schoppenvrouwen game shape in storage — resetting", game)
-            resetGame()
-            router.replace("/schoppenvrouwen/setup")
-        }
-    }, [game, router, isHydrated, resetGame])
-
-    useEffect(() => {
-        if (!isHydrated || !game) return
+        if (!hydrated || !game) return
         if (isNaN(roundNumber)) {
             router.replace("/schoppenvrouwen")
             return
@@ -140,7 +136,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         if (ri < 0 || ri >= game.rounds.length) {
             router.replace("/schoppenvrouwen")
         }
-    }, [isHydrated, game, roundNumber, router])
+    }, [hydrated, game, roundNumber, router])
 
     const roundIndex = !isNaN(roundNumber) ? roundNumber - 1 : -1
     const isValidRound =
@@ -174,7 +170,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         setCloserConfirmed(false)
     }, [roundIndex, shouldAskWhoClosed])
 
-    if (!isHydrated || !game || !isValidSchoppenvrouwenGame(game)) {
+    if (!hydrated || !game) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>
@@ -192,10 +188,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
 
     const activeRound = viewedRound!
 
-    const displayDealerIndex =
-        orderLen > 0
-            ? (game.dealerIndex - (game.currentRoundIndex - roundIndex) + orderLen) % orderLen
-            : 0
+    const displayDealerIndex = orderLen > 0 ? getSchoppenvrouwenRoundDealerIndex(game, roundIndex) : 0
     const dealerId = orderLen > 0 ? playerOrder[displayDealerIndex] : undefined
 
     const closerHighlightId =
@@ -233,11 +226,25 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         }
     }
 
+    const focusNextEmpty = (fromIndex: number) => {
+        for (let i = fromIndex + 1; i < playerOrder.length; i++) {
+            const el = inputRefs.current[playerOrder[i]]
+            if (el) {
+                el.focus()
+                el.select()
+                return
+            }
+        }
+        // Out of inputs — dismiss keyboard so the sticky action button is visible
+        const active = inputRefs.current[playerOrder[fromIndex]]
+        active?.blur()
+    }
+
     return (
         <>
             <Title>Ronde {roundNumber}</Title>
 
-            <div className="space-y-4">
+            <div className="space-y-4 pb-28">
                 {/* Round info */}
                 <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-3">
                     <div className="flex items-center justify-center gap-2">
@@ -253,9 +260,12 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
 
                 {/* Score inputs */}
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden divide-y divide-zinc-800/60">
-                    {playerOrder.map((playerId) => (
+                    {playerOrder.map((playerId, idx) => (
                         <InputPlayerScore
                             key={`${playerId}-${roundIndex}`}
+                            ref={(el) => {
+                                inputRefs.current[playerId] = el
+                            }}
                             playerId={playerId}
                             player={players[playerId]}
                             currentScore={activeRound.scores[playerId]}
@@ -263,9 +273,11 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                                 getPlayerTotal(playerId) +
                                 (!isViewedRoundComplete ? (activeRound.scores[playerId] ?? 0) : 0)
                             }
+                            isLast={idx === playerOrder.length - 1}
                             onScoreChange={(score) =>
                                 setScoreForRound({ roundIndex, playerId, score })
                             }
+                            onSubmitNext={() => focusNextEmpty(idx)}
                         />
                     ))}
                 </div>
@@ -304,17 +316,29 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                     </div>
                 )}
 
-                {/* Done button */}
-                <Button
-                    onClick={handleDone}
-                    className={cn(
-                        "w-full text-lg font-bold h-14 rounded-xl",
-                        canFinishRound ? "bg-rose-600 hover:bg-rose-700" : "bg-zinc-800 text-zinc-500"
-                    )}
-                    disabled={!canFinishRound}
-                >
-                    {doneButtonLabel}
-                </Button>
+            </div>
+
+            {/*
+             * Sticky bottom action — pinned with safe-area padding so it stays above
+             * the iOS home-indicator and doesn't get covered by the software keyboard
+             * after dismissing focus.
+             */}
+            <div
+                className="fixed inset-x-0 bottom-0 z-20 bg-linear-to-t from-zinc-950 via-zinc-950 to-zinc-950/0 px-4 pt-4"
+                style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+            >
+                <div className="mx-auto max-w-lg">
+                    <Button
+                        onClick={handleDone}
+                        className={cn(
+                            "w-full text-lg font-bold h-14 rounded-xl shadow-lg shadow-black/40",
+                            canFinishRound ? "bg-rose-600 hover:bg-rose-700" : "bg-zinc-800 text-zinc-500"
+                        )}
+                        disabled={!canFinishRound}
+                    >
+                        {doneButtonLabel}
+                    </Button>
+                </div>
             </div>
         </>
     )

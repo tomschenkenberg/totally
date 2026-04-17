@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { useHydrated } from "@/hooks/use-hydrated"
 
 const GAME_MODE_LABELS: Record<GameMode, string> = {
     boerenbridge: "Boerenbridge",
@@ -93,7 +94,12 @@ const NavButton = ({
 }
 
 export function MainMenu() {
-    const gameMode = useAtomValue(gameModeAtom)
+    const hydrated = useHydrated()
+    const storedGameMode = useAtomValue(gameModeAtom)
+    // Treat gameMode as null until hydration completes so SSR and the first
+    // client render agree. Otherwise localStorage-backed state produces a
+    // hydration mismatch in the header badge + menu contents.
+    const gameMode = hydrated ? storedGameMode : null
     const activeGame = useAtomValue(hasActiveGameAtom)
     const setGameMode = useSetAtom(gameModeAtom)
     const resetBoerenBridge = useSetAtom(resetBoerenBridgeGameAtom)

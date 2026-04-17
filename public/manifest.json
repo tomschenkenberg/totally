@@ -1,17 +1,37 @@
 {
+    "id": "/?source=pwa",
     "name": "Totally",
     "short_name": "Totally",
+    "description": "Houd de score bij voor Boerenbridge, Schoppenvrouwen en andere kaartspellen.",
     "start_url": "/",
     "scope": "/",
-    "theme_color": "#1E293B",
-    "version": "1.0.0",
-    "description": "Manage and track scores for multiple players across multiple rounds of a game.",
-    "author": "Tom M. Schenkenberg",
-    "homepage_url": "https://schenkenberg.nl",
-    "permissions": ["storage", "tabs"],
-    "background_color": "#1E293B",
     "display": "standalone",
     "orientation": "portrait",
+    "theme_color": "#09090b",
+    "background_color": "#09090b",
+    "lang": "nl",
+    "dir": "ltr",
+    "categories": ["games", "utilities"],
+    "shortcuts": [
+        {
+            "name": "Boerenbridge",
+            "short_name": "Boerenbridge",
+            "url": "/boerenbridge",
+            "description": "Start of hervat een Boerenbridge-spel"
+        },
+        {
+            "name": "Schoppenvrouwen",
+            "short_name": "Schoppen\u00advrouwen",
+            "url": "/schoppenvrouwen",
+            "description": "Start of hervat een Schoppenvrouwen-spel"
+        },
+        {
+            "name": "Spelers",
+            "short_name": "Spelers",
+            "url": "/players",
+            "description": "Beheer spelers"
+        }
+    ],
     "icons": [
         {
             "src": "/icons/ios/1024.png",

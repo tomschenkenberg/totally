@@ -4,7 +4,6 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { useParams, useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
 import {
-    boerenBridgeGameAtom,
     getCurrentRoundCardsAtom,
     getCurrentRoundAtom,
     setTricksAtom,
@@ -17,13 +16,14 @@ import Title from "@/components/title"
 import { cn, scoreTextClass } from "@/lib/utils"
 import { useEffect, useState, useRef } from "react"
 import { Check, X, AlertTriangle } from "lucide-react"
+import { useValidGame } from "@/hooks/use-valid-game"
 
 export default function TricksPage() {
     const params = useParams()
     const router = useRouter()
     const roundNumber = Number(params.n)
 
-    const game = useAtomValue(boerenBridgeGameAtom)
+    const { hydrated, game } = useValidGame("boerenbridge")
     const players = useAtomValue(playersAtom)
     const cards = useAtomValue(getCurrentRoundCardsAtom)
     const currentRound = useAtomValue(getCurrentRoundAtom)
@@ -32,7 +32,6 @@ export default function TricksPage() {
 
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0)
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null)
-    const [isHydrated, setIsHydrated] = useState(false)
     const [isAutoAdvancing, setIsAutoAdvancing] = useState(false)
     const [submittingTricks, setSubmittingTricks] = useState<{
         tricks: number
@@ -40,11 +39,7 @@ export default function TricksPage() {
     } | null>(null)
 
     useEffect(() => {
-        setIsHydrated(true)
-    }, [])
-
-    useEffect(() => {
-        if (!isHydrated || !game || !currentRound) return
+        if (!hydrated || !game || !currentRound) return
         const playerOrder = game.playerOrder
         const firstPlayerWithoutTricks = playerOrder.findIndex(
             (playerId) => currentRound.tricks[playerId] === undefined
@@ -55,41 +50,26 @@ export default function TricksPage() {
             setCurrentPlayerIndex(0)
         }
         setEditingPlayerId(null)
-    }, [roundNumber, isHydrated, game, currentRound])
+    }, [roundNumber, hydrated, game, currentRound])
 
     useEffect(() => {
-        if (!isHydrated || !game || !currentRound) return
+        if (!hydrated || !game || !currentRound) return
         if (autoAdvanceRef.current) return
         const tricksComplete = Object.keys(currentRound.tricks).length === game.playerOrder.length
         if (tricksComplete) return
         if (roundNumber !== game.currentRoundIndex + 1) {
             router.replace(`/boerenbridge/round/${game.currentRoundIndex + 1}/tricks`)
         }
-    }, [game, currentRound, roundNumber, router, isHydrated])
-
-    useEffect(() => {
-        if (!isHydrated) return
-        if (!game) {
-            router.replace("/boerenbridge/setup")
-        }
-    }, [isHydrated, game, router])
+    }, [game, currentRound, roundNumber, router, hydrated])
 
     const playerOrder = game?.playerOrder ?? []
     const currentPlayerId = playerOrder[currentPlayerIndex]
-    const currentPlayer = currentPlayerId ? players[currentPlayerId] : null
 
-    const totalTricks = currentRound ? Object.values(currentRound.tricks).reduce((sum, t) => sum + t, 0) : 0
-    const allTricksComplete = currentRound ? Object.keys(currentRound.tricks).length === playerOrder.length : false
-    const totalTricksValid = totalTricks === cards
-    const isLastRound = game ? game.currentRoundIndex === BOEREN_BRIDGE_ROUNDS.length - 1 : false
-
-    const activePlayerId = editingPlayerId ?? currentPlayerId
-    const activePlayerForEdit = activePlayerId ? players[activePlayerId] : null
     const isEditing = editingPlayerId !== null
 
     const autoAdvanceRef = useRef(false)
 
-    if (!isHydrated || !game || !currentRound) {
+    if (!hydrated || !game || !currentRound) {
         return (
             <div className="flex items-center justify-center py-16">
                 <div className="text-zinc-500">Laden...</div>
@@ -145,12 +125,13 @@ export default function TricksPage() {
         : safeTotalTricks
     const remainingTricks = cards - tricksWithoutCurrentPlayer
 
-    const handleTricks = async (tricks: number) => {
+    const handleTricks = (tricks: number) => {
         if (submittingTricks) return
         if (safeActivePlayerId === null) return
 
+        // Brief visual confirmation — cleared on the next frame so the UI
+        // updates immediately (previously gated behind a 750ms delay).
         setSubmittingTricks({ tricks, playerId: safeActivePlayerId })
-        await new Promise((resolve) => setTimeout(resolve, 750))
 
         let newTotal: number
         let newCount: number
@@ -193,7 +174,8 @@ export default function TricksPage() {
                 setCurrentPlayerIndex(nextPlayerIndex)
             }
         }
-        setSubmittingTricks(null)
+
+        requestAnimationFrame(() => setSubmittingTricks(null))
     }
 
     const handleBack = () => {

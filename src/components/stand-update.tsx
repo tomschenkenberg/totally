@@ -152,8 +152,16 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
             return
         }
 
-        stopAudio()
+        // iOS Safari only allows Audio elements created *inside* a user-gesture
+        // frame to play. `new Audio()` + `.load()` must happen synchronously here,
+        // before any `await`. Later, when the blob is ready, we swap `.src` and
+        // call `.play()` on this same (gesture-blessed) element.
+        const audio = new Audio()
+        audioRef.current = audio
+        audio.load()
+
         setIsLoadingAudio(true)
+        let audioUrl: string | null = null
 
         try {
             const response = await fetch("/api/speak", {
@@ -166,33 +174,31 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
                 throw new Error("Failed to generate speech")
             }
 
+            if (audioRef.current !== audio) {
+                return
+            }
+
             const arrayBuffer = await response.arrayBuffer()
             const blob = new Blob([arrayBuffer], { type: "audio/mpeg" })
-            const audioUrl = URL.createObjectURL(blob)
-            const audio = new Audio()
-            audioRef.current = audio
+            audioUrl = URL.createObjectURL(blob)
+            const currentUrl = audioUrl
 
-            audio.oncanplaythrough = () => {
-                setIsSpeaking(true)
-                audio.play().catch(err => {
-                    console.error("Play failed:", err)
-                    setIsSpeaking(false)
-                })
-            }
             audio.onended = () => {
                 setIsSpeaking(false)
-                URL.revokeObjectURL(audioUrl)
+                URL.revokeObjectURL(currentUrl)
             }
             audio.onerror = () => {
                 setIsSpeaking(false)
-                URL.revokeObjectURL(audioUrl)
+                URL.revokeObjectURL(currentUrl)
             }
 
-            audio.src = audioUrl
-            audio.load()
+            audio.src = currentUrl
+            setIsSpeaking(true)
+            await audio.play()
         } catch (error) {
             console.error("Failed to generate speech:", error)
             setIsSpeaking(false)
+            if (audioUrl) URL.revokeObjectURL(audioUrl)
         } finally {
             setIsLoadingAudio(false)
         }

@@ -42,3 +42,5 @@ data/
 sw.*
 workbox-*
 swe-worker-*
+public/sw*
+public/swe-worker*

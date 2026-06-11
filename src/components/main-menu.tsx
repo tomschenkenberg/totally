@@ -32,7 +32,7 @@ import {
     AlertDialogTitle
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useLayoutEffect } from "react"
 import { useHydrated } from "@/hooks/use-hydrated"
 
 const GAME_MODE_LABELS: Record<GameMode, string> = {
@@ -106,6 +106,15 @@ export function MainMenu() {
     const resetSchoppenvrouwen = useSetAtom(resetSchoppenvrouwenGameAtom)
     const router = useRouter()
 
+    useLayoutEffect(() => {
+        if (!hydrated) return
+        if (gameMode) {
+            document.documentElement.dataset.gameMode = gameMode
+        } else {
+            delete document.documentElement.dataset.gameMode
+        }
+    }, [hydrated, gameMode])
+
     const [showConfirmDialog, setShowConfirmDialog] = useState(false)
     const [pendingAction, setPendingAction] = useState<"new" | "switch" | null>(null)
 
@@ -113,7 +122,7 @@ export function MainMenu() {
         resetBoerenBridge()
         resetSchoppenvrouwen()
         setGameMode(null)
-        router.push("/")
+        router.replace("/")
     }
 
     const handleNewGame = () => {

@@ -2,7 +2,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useLayoutEffect } from "react"
 import {
     boerenBridgeGameAtom,
     BoerenBridgeGame,
@@ -51,7 +51,7 @@ export function useValidGame<M extends "boerenbridge" | "schoppenvrouwen">(mode:
     const reset = mode === "boerenbridge" ? resetBB : resetSV
     const setupRoute = SETUP_ROUTES[mode]
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!hydrated) return
         // If the active mode isn't this page's mode, the user either never
         // picked this mode or just switched/reset out of it — send them to the

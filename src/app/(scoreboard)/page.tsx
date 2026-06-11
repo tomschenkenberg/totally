@@ -1,24 +1,24 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Scoreboard from "@/app/(scoreboard)/scoreboard"
 import Title from "@/components/title"
 import { GameModeSelector } from "@/components/game-mode-selector"
 import { useAtomValue } from "jotai"
 import { gameModeAtom } from "@/lib/atoms/game"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { LoadingPlaceholder } from "@/components/loading-placeholder"
+
+const BoerenBridgePlayFlow = dynamic(
+    () => import("@/components/boerenbridge/play-flow").then((m) => ({ default: m.BoerenBridgePlayFlow })),
+    { loading: () => <LoadingPlaceholder /> }
+)
+
+const SchoppenvrouwenScoreboard = dynamic(() => import("@/app/schoppenvrouwen/page"), {
+    loading: () => <LoadingPlaceholder />
+})
 
 export default function ScoreboardPage() {
     const gameMode = useAtomValue(gameModeAtom)
-    const router = useRouter()
-
-    useEffect(() => {
-        if (gameMode === "boerenbridge") {
-            router.push("/boerenbridge")
-        } else if (gameMode === "schoppenvrouwen") {
-            router.push("/schoppenvrouwen")
-        }
-    }, [gameMode, router])
 
     if (gameMode === null) {
         return (
@@ -29,8 +29,12 @@ export default function ScoreboardPage() {
         )
     }
 
-    if (gameMode === "boerenbridge" || gameMode === "schoppenvrouwen") {
-        return null // Will redirect
+    if (gameMode === "boerenbridge") {
+        return <BoerenBridgePlayFlow />
+    }
+
+    if (gameMode === "schoppenvrouwen") {
+        return <SchoppenvrouwenScoreboard />
     }
 
     return (

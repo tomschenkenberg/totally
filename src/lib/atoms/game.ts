@@ -253,6 +253,13 @@ export const isTricksCompleteAtom = atom((get) => {
     return Object.keys(round.tricks).length === game.playerOrder.length
 })
 
+// Total tricks entered for current round
+export const getTotalTricksAtom = atom((get) => {
+    const round = get(getCurrentRoundAtom)
+    if (!round) return 0
+    return Object.values(round.tricks).reduce((sum, tricks) => sum + tricks, 0)
+})
+
 // Check if game is finished
 export const isGameFinishedAtom = atom((get) => {
     const game = get(boerenBridgeGameAtom)
@@ -274,6 +281,17 @@ export const isGameFinishedAtom = atom((get) => {
     return false
 })
 
+export type BoerenBridgePlayStep = "scoreboard" | "bid" | "tricks"
+export const boerenBridgePlayStepAtom = atom<BoerenBridgePlayStep>("scoreboard")
+
+/** Suggested UI step from round progress (canonical source of truth). */
+export const getBoerenBridgeSuggestedStepAtom = atom((get): BoerenBridgePlayStep => {
+    if (get(isGameFinishedAtom)) return "scoreboard"
+    if (!get(isBiddingCompleteAtom)) return "bid"
+    if (!get(isTricksCompleteAtom)) return "tricks"
+    return "scoreboard"
+})
+
 // Actions
 
 // Initialize a new Boerenbridge game
@@ -293,6 +311,7 @@ export const initBoerenBridgeGameAtom = atom(
             rounds: [initialRound]
         })
         set(gameModeAtom, "boerenbridge")
+        set(boerenBridgePlayStepAtom, "bid")
     }
 )
 
@@ -331,6 +350,20 @@ export const clearBidAtom = atom(null, (get, set, { playerId }: { playerId: numb
     const currentRound = { ...updatedRounds[game.currentRoundIndex] }
     const { [playerId]: _, ...remainingBids } = currentRound.bids
     currentRound.bids = remainingBids
+    updatedRounds[game.currentRoundIndex] = currentRound
+
+    set(boerenBridgeGameAtom, { ...game, rounds: updatedRounds })
+})
+
+// Clear a player's tricks (for editing / back navigation)
+export const clearTricksAtom = atom(null, (get, set, { playerId }: { playerId: number }) => {
+    const game = get(boerenBridgeGameAtom)
+    if (!game) return
+
+    const updatedRounds = [...game.rounds]
+    const currentRound = { ...updatedRounds[game.currentRoundIndex] }
+    const { [playerId]: _, ...remainingTricks } = currentRound.tricks
+    currentRound.tricks = remainingTricks
     updatedRounds[game.currentRoundIndex] = currentRound
 
     set(boerenBridgeGameAtom, { ...game, rounds: updatedRounds })
@@ -388,10 +421,45 @@ export const advanceToNextRoundAtom = atom(null, (get, set) => {
     })
 })
 
+/** Finish current round when all tricks are valid; advance dealer/round unless game ends. */
+export const completeBoerenBridgeRoundAtom = atom(null, (get, set) => {
+    const game = get(boerenBridgeGameAtom)
+    const round = get(getCurrentRoundAtom)
+    const cards = get(getCurrentRoundCardsAtom)
+    if (!game || !round) return
+
+    const playerCount = game.playerOrder.length
+    if (Object.keys(round.tricks).length !== playerCount) return
+
+    const totalTricks = Object.values(round.tricks).reduce((sum, t) => sum + t, 0)
+    if (totalTricks !== cards) return
+
+    const isLastRound = game.currentRoundIndex >= BOEREN_BRIDGE_ROUNDS.length - 1
+    if (!isLastRound) {
+        const nextRoundIndex = game.currentRoundIndex + 1
+        const nextDealerIndex = (game.dealerIndex + 1) % game.playerOrder.length
+        const newRound: BoerenBridgeRound = {
+            cards: BOEREN_BRIDGE_ROUNDS[nextRoundIndex],
+            bids: {},
+            tricks: {}
+        }
+
+        set(boerenBridgeGameAtom, {
+            ...game,
+            dealerIndex: nextDealerIndex,
+            currentRoundIndex: nextRoundIndex,
+            rounds: [...game.rounds, newRound]
+        })
+    }
+
+    set(boerenBridgePlayStepAtom, "scoreboard")
+})
+
 // Reset Boerenbridge game
 export const resetBoerenBridgeGameAtom = atom(null, (get, set) => {
     set(boerenBridgeGameAtom, null)
     set(gameModeAtom, null)
+    set(boerenBridgePlayStepAtom, "scoreboard")
 })
 
 // Update player order

@@ -51,7 +51,7 @@ export default function BoerenBridgeSetupPage() {
     const handleStartGame = () => {
         if (playerOrder.length < 2) return
         initGame({ playerOrder, dealerIndex })
-        router.push("/boerenbridge/round/1/bid")
+        router.push("/boerenbridge")
     }
 
     if (playerList.length < 2) {

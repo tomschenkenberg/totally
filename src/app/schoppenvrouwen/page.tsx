@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
 import { playersAtom } from "@/lib/atoms/players"
@@ -18,11 +19,17 @@ import Title from "@/components/title"
 import { cn, scoreTextClass } from "@/lib/utils"
 import { useState } from "react"
 import { Trophy, Crown, Play, PartyPopper, RotateCcw } from "lucide-react"
-import { StandUpdate } from "@/components/stand-update"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useValidGame } from "@/hooks/use-valid-game"
+import { usePrefetchRoutes } from "@/hooks/use-prefetch-routes"
+import { useMemo } from "react"
+
+const StandUpdate = dynamic(
+    () => import("@/components/stand-update").then((m) => ({ default: m.StandUpdateSchoppenvrouwen })),
+    { loading: () => null }
+)
 
 export default function SchoppenvrouwenScoreboard() {
     const router = useRouter()
@@ -36,6 +43,13 @@ export default function SchoppenvrouwenScoreboard() {
     const [editingRoundIndex, setEditingRoundIndex] = useState<number | null>(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editScores, setEditScores] = useState<{ [playerId: number]: string }>({})
+
+    const prefetchRoutes = useMemo(() => {
+        if (!game) return ["/schoppenvrouwen/setup", "/players"]
+        const round = game.currentRoundIndex + 1
+        return [`/schoppenvrouwen/round/${round}`, "/schoppenvrouwen/setup", "/players"]
+    }, [game])
+    usePrefetchRoutes(prefetchRoutes)
 
     if (!hydrated || !game) {
         return (
@@ -166,7 +180,7 @@ export default function SchoppenvrouwenScoreboard() {
                     </Button>
                 )}
 
-                <StandUpdate gameMode="schoppenvrouwen" />
+                <StandUpdate />
 
                 {/* Standings */}
                 <div className="space-y-2">

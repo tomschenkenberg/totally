@@ -1,11 +1,16 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { Player } from "@/lib/atoms/players"
 import { useAtomValue } from "jotai"
 import { getPlayersSortedByScoreAtom, getNumberOfRoundsAtom, getTotalScoreAtom } from "@/lib/atoms/players"
 import { AddNewScoresButton } from "@/components/add-scores-button"
-import { StandUpdate } from "@/components/stand-update"
 import { cn, scoreTextClass } from "@/lib/utils"
+
+const StandUpdate = dynamic(
+    () => import("@/components/stand-update").then((m) => ({ default: m.StandUpdateGeneric })),
+    { loading: () => null }
+)
 
 const PlayerScore = ({ id, player }: { id: number; player: Player }) => {
     const getTotalScore = useAtomValue(getTotalScoreAtom)
@@ -37,7 +42,7 @@ export default function Scoreboard() {
                 ))}
             </div>
             <div className="space-y-3">
-                <StandUpdate gameMode="generic" />
+                <StandUpdate />
                 <AddNewScoresButton />
             </div>
         </>

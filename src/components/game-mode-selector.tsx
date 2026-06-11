@@ -45,13 +45,13 @@ export function GameModeSelector() {
         setGameMode(mode)
         switch (mode) {
             case "boerenbridge":
-                router.push("/boerenbridge/setup")
+                router.replace("/boerenbridge/setup")
                 break
             case "schoppenvrouwen":
-                router.push("/schoppenvrouwen/setup")
+                router.replace("/schoppenvrouwen/setup")
                 break
             case "generic":
-                router.push("/players")
+                router.replace("/players")
                 break
         }
     }

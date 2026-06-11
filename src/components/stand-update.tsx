@@ -1,115 +1,39 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback } from "react"
 import { useAtomValue } from "jotai"
 import { readStreamableValue } from "@ai-sdk/rsc"
 import { Button } from "@/components/ui/button"
-import {
-    playersAtom,
-    maxRoundKeyFromPlayers,
-    sortedUnionRoundKeys,
-    activeNamedPlayers
-} from "@/lib/atoms/players"
+import { playersAtom } from "@/lib/atoms/players"
 import {
     boerenBridgeGameAtom,
     getPlayerBoerenBridgeTotalAtom,
-    calculateBoerenBridgeScore,
-    BOEREN_BRIDGE_ROUNDS,
     schoppenvrouwenGameAtom,
     getSchoppenvrouwenPlayerTotalAtom,
-    SCHOPPENVROUWEN_TARGET_SCORE,
-    GameMode,
-    isSchoppenvrouwenRoundFullyScored
+    isSchoppenvrouwenRoundFullyScored,
+    GameMode
 } from "@/lib/atoms/game"
 import { generateStandUpdate } from "@/app/actions/stand-update"
+import {
+    getCachedStandUpdate,
+    hashGameState,
+    setCachedStandUpdate
+} from "@/lib/stand-update-cache"
+import {
+    buildBoerenBridgeStandState,
+    buildGenericStandState,
+    buildSchoppenvrouwenStandState,
+    type StandUpdateGameState
+} from "@/lib/stand-update/build-game-state"
+import { useStandUpdateSpeech } from "@/hooks/use-stand-update-speech"
 import { Sparkles, Volume2, Loader2, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface StandUpdateProps {
-    gameMode: GameMode
-}
-
-export function StandUpdate({ gameMode }: StandUpdateProps) {
-    const [update, setUpdate] = useState<string>("")
+function StandUpdatePanel({ gameState, hasEnoughData }: { gameState: StandUpdateGameState; hasEnoughData: boolean }) {
+    const [update, setUpdate] = useState("")
     const [isLoading, setIsLoading] = useState(false)
-    const [isSpeaking, setIsSpeaking] = useState(false)
-    const [isLoadingAudio, setIsLoadingAudio] = useState(false)
     const [showUpdate, setShowUpdate] = useState(false)
-    const audioRef = useRef<HTMLAudioElement | null>(null)
-
-    const players = useAtomValue(playersAtom)
-    const boerenBridgeGame = useAtomValue(boerenBridgeGameAtom)
-    const getBoerenBridgeTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
-    const schoppenvrouwenGame = useAtomValue(schoppenvrouwenGameAtom)
-    const getSchoppenvrouwenTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
-
-    const buildGameState = useCallback(() => {
-        if (gameMode === "boerenbridge" && boerenBridgeGame) {
-            const playerStandings = boerenBridgeGame.playerOrder.map((id) => {
-                const player = players[id]
-                const roundScores = boerenBridgeGame.rounds
-                    .filter((round) => round.bids[id] !== undefined && round.tricks[id] !== undefined)
-                    .map((round) => calculateBoerenBridgeScore(round.bids[id], round.tricks[id]))
-
-                return {
-                    name: player?.name || "Onbekend",
-                    gender: player?.gender || "x",
-                    score: getBoerenBridgeTotal(id),
-                    roundScores
-                }
-            })
-
-            return {
-                players: playerStandings,
-                currentRound: boerenBridgeGame.currentRoundIndex + 1,
-                totalRounds: BOEREN_BRIDGE_ROUNDS.length,
-                gameMode: "boerenbridge" as const
-            }
-        }
-
-        if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
-            const n = schoppenvrouwenGame.playerOrder.length
-            const playerStandings = schoppenvrouwenGame.playerOrder.map((id) => {
-                const player = players[id]
-                const roundScores = schoppenvrouwenGame.rounds
-                    .filter((round) => isSchoppenvrouwenRoundFullyScored(round, n))
-                    .map((round) => round.scores[id] ?? 0)
-
-                return {
-                    name: player?.name || "Onbekend",
-                    gender: player?.gender || "x",
-                    score: getSchoppenvrouwenTotal(id),
-                    roundScores
-                }
-            })
-
-            return {
-                players: playerStandings,
-                currentRound: schoppenvrouwenGame.currentRoundIndex + 1,
-                totalRounds: undefined,
-                targetScore: SCHOPPENVROUWEN_TARGET_SCORE,
-                gameMode: "schoppenvrouwen" as const
-            }
-        }
-
-        const genericPlayers = activeNamedPlayers(players)
-        const roundKeys = sortedUnionRoundKeys(genericPlayers)
-        const maxRound = maxRoundKeyFromPlayers(genericPlayers)
-        const playerStandings = Object.entries(genericPlayers).map(([, player]) => ({
-            name: player.name,
-            gender: player.gender || "x",
-            score: Object.values(player.scores).reduce((a, b) => a + b, 0),
-            roundScores: roundKeys.map((r) => player.scores[r] ?? 0)
-        }))
-
-        return {
-            players: playerStandings,
-            currentRound: maxRound,
-            totalRounds: maxRound,
-            roundNumbers: roundKeys,
-            gameMode: "generic" as const
-        }
-    }, [gameMode, boerenBridgeGame, schoppenvrouwenGame, players, getBoerenBridgeTotal, getSchoppenvrouwenTotal])
+    const { isSpeaking, isLoadingAudio, speak } = useStandUpdateSpeech()
 
     const handleGenerateUpdate = useCallback(async () => {
         setIsLoading(true)
@@ -117,7 +41,13 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
         setShowUpdate(true)
 
         try {
-            const gameState = buildGameState()
+            const stateHash = hashGameState(gameState)
+            const cached = getCachedStandUpdate(stateHash)
+            if (cached) {
+                setUpdate(cached)
+                return
+            }
+
             const { output } = await generateStandUpdate(gameState)
 
             let fullText = ""
@@ -127,105 +57,19 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
                     setUpdate(fullText)
                 }
             }
+
+            if (fullText) {
+                setCachedStandUpdate(stateHash, fullText)
+            }
         } catch (error) {
             console.error("Failed to generate update:", error)
             setUpdate("Oeps, kon geen update genereren. Probeer het nog eens!")
         } finally {
             setIsLoading(false)
         }
-    }, [buildGameState])
+    }, [gameState])
 
-    const stopAudio = useCallback(() => {
-        if (audioRef.current) {
-            audioRef.current.pause()
-            audioRef.current.currentTime = 0
-            audioRef.current = null
-        }
-        setIsSpeaking(false)
-    }, [])
-
-    const handleSpeak = useCallback(async () => {
-        if (!update) return
-
-        if (audioRef.current && !audioRef.current.paused) {
-            stopAudio()
-            return
-        }
-
-        // iOS Safari only allows Audio elements created *inside* a user-gesture
-        // frame to play. `new Audio()` + `.load()` must happen synchronously here,
-        // before any `await`. Later, when the blob is ready, we swap `.src` and
-        // call `.play()` on this same (gesture-blessed) element.
-        const audio = new Audio()
-        audioRef.current = audio
-        audio.load()
-
-        setIsLoadingAudio(true)
-        let audioUrl: string | null = null
-
-        try {
-            const response = await fetch("/api/speak", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: update })
-            })
-
-            if (!response.ok) {
-                throw new Error("Failed to generate speech")
-            }
-
-            if (audioRef.current !== audio) {
-                return
-            }
-
-            const arrayBuffer = await response.arrayBuffer()
-            const blob = new Blob([arrayBuffer], { type: "audio/mpeg" })
-            audioUrl = URL.createObjectURL(blob)
-            const currentUrl = audioUrl
-
-            audio.onended = () => {
-                setIsSpeaking(false)
-                URL.revokeObjectURL(currentUrl)
-            }
-            audio.onerror = () => {
-                setIsSpeaking(false)
-                URL.revokeObjectURL(currentUrl)
-            }
-
-            audio.src = currentUrl
-            setIsSpeaking(true)
-            await audio.play()
-        } catch (error) {
-            console.error("Failed to generate speech:", error)
-            setIsSpeaking(false)
-            if (audioUrl) URL.revokeObjectURL(audioUrl)
-        } finally {
-            setIsLoadingAudio(false)
-        }
-    }, [update, stopAudio])
-
-    const hasEnoughData = useCallback(() => {
-        if (gameMode === "boerenbridge" && boerenBridgeGame) {
-            const completedRounds = boerenBridgeGame.rounds.filter(
-                (r) =>
-                    Object.keys(r.bids).length === boerenBridgeGame.playerOrder.length &&
-                    Object.keys(r.tricks).length === boerenBridgeGame.playerOrder.length
-            )
-            return completedRounds.length >= 1
-        }
-
-        if (gameMode === "schoppenvrouwen" && schoppenvrouwenGame) {
-            const n = schoppenvrouwenGame.playerOrder.length
-            const completedRounds = schoppenvrouwenGame.rounds.filter((r) =>
-                isSchoppenvrouwenRoundFullyScored(r, n)
-            )
-            return completedRounds.length >= 1
-        }
-
-        return Object.values(players).some((p) => Object.keys(p.scores).length > 0)
-    }, [gameMode, boerenBridgeGame, schoppenvrouwenGame, players])
-
-    if (!hasEnoughData()) {
+    if (!hasEnoughData) {
         return null
     }
 
@@ -261,7 +105,7 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
 
                     {update && !isLoading && (
                         <Button
-                            onClick={handleSpeak}
+                            onClick={() => speak(update)}
                             variant="ghost"
                             size="icon"
                             disabled={isLoadingAudio}
@@ -281,4 +125,59 @@ export function StandUpdate({ gameMode }: StandUpdateProps) {
             )}
         </div>
     )
+}
+
+export function StandUpdateBoerenBridge() {
+    const players = useAtomValue(playersAtom)
+    const game = useAtomValue(boerenBridgeGameAtom)
+    const getTotal = useAtomValue(getPlayerBoerenBridgeTotalAtom)
+
+    if (!game) return null
+
+    const gameState = buildBoerenBridgeStandState(game, players, getTotal)
+    const hasEnoughData = game.rounds.some(
+        (r) =>
+            Object.keys(r.bids).length === game.playerOrder.length &&
+            Object.keys(r.tricks).length === game.playerOrder.length
+    )
+
+    return <StandUpdatePanel gameState={gameState} hasEnoughData={hasEnoughData} />
+}
+
+export function StandUpdateSchoppenvrouwen() {
+    const players = useAtomValue(playersAtom)
+    const game = useAtomValue(schoppenvrouwenGameAtom)
+    const getTotal = useAtomValue(getSchoppenvrouwenPlayerTotalAtom)
+
+    if (!game) return null
+
+    const n = game.playerOrder.length
+    const gameState = buildSchoppenvrouwenStandState(game, players, getTotal)
+    const hasEnoughData = game.rounds.some((r) => isSchoppenvrouwenRoundFullyScored(r, n))
+
+    return <StandUpdatePanel gameState={gameState} hasEnoughData={hasEnoughData} />
+}
+
+export function StandUpdateGeneric() {
+    const players = useAtomValue(playersAtom)
+    const gameState = buildGenericStandState(players)
+    const hasEnoughData = Object.values(players).some((p) => Object.keys(p.scores).length > 0)
+
+    return <StandUpdatePanel gameState={gameState} hasEnoughData={hasEnoughData} />
+}
+
+/** @deprecated Prefer mode-specific exports to avoid cross-mode atom subscriptions. */
+export function StandUpdate({ gameMode }: { gameMode: GameMode }) {
+    switch (gameMode) {
+        case "boerenbridge":
+            return <StandUpdateBoerenBridge />
+        case "schoppenvrouwen":
+            return <StandUpdateSchoppenvrouwen />
+        case "generic":
+            return <StandUpdateGeneric />
+        default: {
+            const _exhaustive: never = gameMode
+            return _exhaustive
+        }
+    }
 }

@@ -2,7 +2,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai"
 import { useRouter } from "next/navigation"
-import { use, useState, useEffect, useRef, forwardRef } from "react"
+import { use, useState, useEffect, useLayoutEffect, useRef, forwardRef } from "react"
 import { playersAtom, Player } from "@/lib/atoms/players"
 import {
     setSchoppenvrouwenScoreForRoundAtom,
@@ -21,6 +21,7 @@ import Title from "@/components/title"
 import { Crown } from "lucide-react"
 import { cn, scoreTextClass } from "@/lib/utils"
 import { useValidGame } from "@/hooks/use-valid-game"
+import { usePrefetchRoutes } from "@/hooks/use-prefetch-routes"
 
 type Params = Promise<{ n: string }>
 
@@ -126,7 +127,9 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
     const [closerConfirmed, setCloserConfirmed] = useState(false)
     const inputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
-    useEffect(() => {
+    usePrefetchRoutes(["/schoppenvrouwen"])
+
+    useLayoutEffect(() => {
         if (!hydrated || !game) return
         if (isNaN(roundNumber)) {
             router.replace("/schoppenvrouwen")

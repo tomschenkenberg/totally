@@ -38,9 +38,8 @@ next-env.d.ts
 # app specifix
 data/
 
-# pwa
-sw.*
-workbox-*
-swe-worker-*
+# pwa (generated output only — keep src/sw.ts tracked)
 public/sw*
 public/swe-worker*
+workbox-*
+swe-worker-*

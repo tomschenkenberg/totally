@@ -3,3 +3,10 @@ allowBuilds:
   unrs-resolver: true
 minimumReleaseAgeExclude:
   - react-hook-form@7.77.0
+  - '@ai-sdk/gateway@3.0.128'
+  - '@ai-sdk/openai@3.0.70'
+  - '@ai-sdk/provider-utils@4.0.28'
+  - '@ai-sdk/react@3.0.204'
+  - '@ai-sdk/rsc@2.0.202'
+  - ai@6.0.202
+  - jotai@2.20.1

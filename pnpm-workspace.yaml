@@ -5,7 +5,7 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
-  - react-hook-form@7.77.0
+  - react-hook-form@7.78.0
   - '@ai-sdk/gateway@3.0.128'
   - '@ai-sdk/openai@3.0.70'
   - '@ai-sdk/provider-utils@4.0.28'

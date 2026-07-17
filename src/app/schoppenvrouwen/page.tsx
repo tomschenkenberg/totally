@@ -314,24 +314,47 @@ export default function SchoppenvrouwenScoreboard() {
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        {playerOrder.map((playerId) => (
-                            <div key={playerId} className="flex items-center gap-4">
-                                <Label className="text-white w-24 truncate">
-                                    {players[playerId]?.name}
-                                </Label>
-                                <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="-?[0-9]*"
-                                    autoComplete="off"
-                                    enterKeyHint="done"
-                                    value={editScores[playerId] || "0"}
-                                    onChange={(e) => setEditScores({ ...editScores, [playerId]: e.target.value })}
-                                    onFocus={(e) => e.currentTarget.select()}
-                                    className="bg-zinc-800 border-zinc-700 text-white"
-                                />
-                            </div>
-                        ))}
+                        {playerOrder.map((playerId) => {
+                            const value = editScores[playerId] ?? "0"
+                            const toggleSign = () => {
+                                if (value === "" || value === "-") return
+                                const current = parseInt(value, 10)
+                                if (isNaN(current)) return
+                                setEditScores({ ...editScores, [playerId]: (current * -1).toString() })
+                            }
+
+                            return (
+                                <div key={playerId} className="flex items-center gap-3">
+                                    <Label className="text-white w-24 truncate shrink-0">
+                                        {players[playerId]?.name}
+                                    </Label>
+                                    <Input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="-?[0-9]*"
+                                        autoComplete="off"
+                                        enterKeyHint="done"
+                                        value={value}
+                                        onChange={(e) =>
+                                            setEditScores({ ...editScores, [playerId]: e.target.value })
+                                        }
+                                        onFocus={(e) => e.currentTarget.select()}
+                                        className="bg-zinc-800 border-zinc-700 text-white font-mono text-center"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={toggleSign}
+                                        disabled={value === "" || value === "-" || isNaN(parseInt(value, 10))}
+                                        className="border-zinc-700 text-zinc-400 hover:text-white h-10 w-10 p-0 rounded-xl shrink-0"
+                                        aria-label="Wissel teken"
+                                    >
+                                        +/-
+                                    </Button>
+                                </div>
+                            )
+                        })}
                         <Button onClick={handleSaveEdit} className="w-full bg-rose-600 hover:bg-rose-700 rounded-xl h-12">
                             Opslaan
                         </Button>

@@ -238,7 +238,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                 return
             }
         }
-        // Out of inputs — dismiss keyboard so the sticky action button is visible
+        // Out of inputs — dismiss keyboard
         const active = inputRefs.current[playerOrder[fromIndex]]
         active?.blur()
     }
@@ -247,7 +247,7 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
         <>
             <Title>Ronde {roundNumber}</Title>
 
-            <div className="space-y-4 pb-28">
+            <div className="space-y-4 pb-8">
                 {/* Round info */}
                 <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-3">
                     <div className="flex items-center justify-center gap-2">
@@ -319,29 +319,17 @@ export default function SchoppenvrouwenRoundPage({ params }: { params: Params })
                     </div>
                 )}
 
-            </div>
-
-            {/*
-             * Sticky bottom action — pinned with safe-area padding so it stays above
-             * the iOS home-indicator and doesn't get covered by the software keyboard
-             * after dismissing focus.
-             */}
-            <div
-                className="fixed inset-x-0 bottom-0 z-20 bg-linear-to-t from-zinc-950 via-zinc-950 to-zinc-950/0 px-4 pt-4"
-                style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
-            >
-                <div className="mx-auto max-w-lg">
-                    <Button
-                        onClick={handleDone}
-                        className={cn(
-                            "w-full text-lg font-bold h-14 rounded-xl shadow-lg shadow-black/40",
-                            canFinishRound ? "bg-rose-600 hover:bg-rose-700" : "bg-zinc-800 text-zinc-500"
-                        )}
-                        disabled={!canFinishRound}
-                    >
-                        {doneButtonLabel}
-                    </Button>
-                </div>
+                {/* In-flow under the last player — fixed bottom was hidden by the iOS keyboard */}
+                <Button
+                    onClick={handleDone}
+                    className={cn(
+                        "w-full text-lg font-bold h-14 rounded-xl shadow-lg shadow-black/40",
+                        canFinishRound ? "bg-rose-600 hover:bg-rose-700" : "bg-zinc-800 text-zinc-500"
+                    )}
+                    disabled={!canFinishRound}
+                >
+                    {doneButtonLabel}
+                </Button>
             </div>
         </>
     )

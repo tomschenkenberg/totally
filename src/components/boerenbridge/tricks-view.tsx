@@ -22,9 +22,10 @@ import { LoadingPlaceholder } from "@/components/loading-placeholder"
 
 interface TricksViewProps {
     game: BoerenBridgeGame
+    onBackToScoreboard: () => void
 }
 
-export function TricksView({ game }: TricksViewProps) {
+export function TricksView({ game, onBackToScoreboard }: TricksViewProps) {
     const players = useAtomValue(playersAtom)
     const cards = useAtomValue(getCurrentRoundCardsAtom)
     const currentRound = useAtomValue(getCurrentRoundAtom)
@@ -220,16 +221,24 @@ export function TricksView({ game }: TricksViewProps) {
                             </div>
                         )}
 
-                        {canGoBack && (
-                            <Button
-                                variant="ghost"
-                                onClick={handleBack}
-                                className="w-full text-zinc-500 h-12 rounded-xl"
-                            >
-                                {isEditing ? "Annuleren" : "← Vorige speler"}
-                            </Button>
-                        )}
+                        <Button
+                            variant="ghost"
+                            onClick={canGoBack ? handleBack : onBackToScoreboard}
+                            className="w-full text-zinc-500 h-12 rounded-xl"
+                        >
+                            {isEditing ? "Annuleren" : canGoBack ? "← Vorige speler" : "← Scorebord"}
+                        </Button>
                     </div>
+                )}
+
+                {allTricksComplete && !isEditing && (
+                    <Button
+                        variant="ghost"
+                        onClick={onBackToScoreboard}
+                        className="w-full text-zinc-500 h-12 rounded-xl"
+                    >
+                        ← Scorebord
+                    </Button>
                 )}
 
                 <div className="space-y-2">

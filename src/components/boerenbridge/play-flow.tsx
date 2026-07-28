@@ -46,9 +46,20 @@ export function BoerenBridgePlayFlow() {
 
     switch (playStep) {
         case "bid":
-            return <BiddingView game={game} onContinue={() => setPlayStep("tricks")} />
+            return (
+                <BiddingView
+                    game={game}
+                    onContinue={() => setPlayStep("tricks")}
+                    onBackToScoreboard={() => setPlayStep("scoreboard")}
+                />
+            )
         case "tricks":
-            return <TricksView game={game} />
+            return (
+                <TricksView
+                    game={game}
+                    onBackToScoreboard={() => setPlayStep("scoreboard")}
+                />
+            )
         default:
             return <BoerenBridgeScoreboardView game={game} onContinue={setPlayStep} />
     }

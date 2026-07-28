@@ -25,9 +25,10 @@ import { LoadingPlaceholder } from "@/components/loading-placeholder"
 interface BiddingViewProps {
     game: BoerenBridgeGame
     onContinue: () => void
+    onBackToScoreboard: () => void
 }
 
-export function BiddingView({ game, onContinue }: BiddingViewProps) {
+export function BiddingView({ game, onContinue, onBackToScoreboard }: BiddingViewProps) {
     const players = useAtomValue(playersAtom)
     const cards = useAtomValue(getCurrentRoundCardsAtom)
     const dealerId = useAtomValue(getCurrentDealerIdAtom)
@@ -178,15 +179,21 @@ export function BiddingView({ game, onContinue }: BiddingViewProps) {
                             })}
                         </div>
 
-                        {((currentBidderIndex > 0 && currentBidderIndex !== -1) || isEditing) && (
-                            <Button
-                                variant="ghost"
-                                onClick={handleBack}
-                                className="w-full text-zinc-500 h-12 rounded-xl"
-                            >
-                                {isEditing ? "Annuleren" : "← Vorige speler"}
-                            </Button>
-                        )}
+                        <Button
+                            variant="ghost"
+                            onClick={
+                                isEditing || (currentBidderIndex > 0 && currentBidderIndex !== -1)
+                                    ? handleBack
+                                    : onBackToScoreboard
+                            }
+                            className="w-full text-zinc-500 h-12 rounded-xl"
+                        >
+                            {isEditing
+                                ? "Annuleren"
+                                : currentBidderIndex > 0 && currentBidderIndex !== -1
+                                  ? "← Vorige speler"
+                                  : "← Scorebord"}
+                        </Button>
                     </div>
                 )}
 
@@ -264,6 +271,13 @@ export function BiddingView({ game, onContinue }: BiddingViewProps) {
                             className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg font-bold h-14 rounded-xl"
                         >
                             Slagen invoeren →
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            onClick={onBackToScoreboard}
+                            className="w-full text-zinc-500 h-12 rounded-xl"
+                        >
+                            ← Scorebord
                         </Button>
                     </div>
                 )}

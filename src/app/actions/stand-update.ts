@@ -1,8 +1,41 @@
 "use server"
 
 import { streamText } from "ai"
-import { openai } from "@ai-sdk/openai"
 import { createStreamableValue } from "@ai-sdk/rsc"
+
+/** Gateway catalog id. Non-reasoning so the first word shows up while people are still looking at the table. */
+const STAND_UPDATE_MODEL = "spacexai/grok-4.20-non-reasoning"
+
+const STAND_UPDATE_SYSTEM = `Je bent de scherpe vriend aan tafel die een kaartspel hardop nabespreekt. De tekst wordt voorgelezen, dus schrijf spreektaal: korte zinnen, gewone woorden.
+
+Geen titel, geen aanhalingstekens, geen emoji, geen opsomming, geen haakjes, geen afkortingen.
+
+Je klinkt droog en precies, alsof je meekeek. Geen stadionomroeper, geen chatbot, geen "wat een avond".
+
+Harde regels:
+- Alleen de commentaartekst.
+- Gebruik per speler de voornaamwoorden uit de lijst. Nooit "hij" voor iemand die als vrouw staat, en nooit "zij" voor iemand die als man staat.
+- Verzin niets. Geen score, ronde of wissel die niet in de cijfers staat.
+- Hooguit één concreet rondemoment, en alleen als dat het verhaal draagt. Geen rondes afwerken.
+- Zet cijfers in een zin: "twaalf punten erbij", "acht in de min". Niet "plus twaalf" en niet een rij getallen.
+- Humor is understatement. Eén scherpe zin is genoeg. Geen vergelijkingen met dieren, voertuigen, eten of de kosmos.`
+
+function getFinishedGameContext(gameMode: GameState["gameMode"], targetScore: number | undefined): string {
+    switch (gameMode) {
+        case "boerenbridge":
+            return "Boerenbridge is afgelopen. Positieve scores betekenen een goede voorspelling, negatieve scores een misrekening."
+        case "schoppenvrouwen":
+            return targetScore
+                ? `Schoppenvrouwen is afgelopen. Wie het eerst ${targetScore} haalde, won. Bij een gelijke finish telt wie de laatste ronde afsloot.`
+                : "Schoppenvrouwen is afgelopen."
+        case "generic":
+            return "De scoretelling is afgelopen."
+        default: {
+            const _exhaustive: never = gameMode
+            return _exhaustive
+        }
+    }
+}
 
 type Gender = "m" | "v" | "x"
 
@@ -80,7 +113,7 @@ export async function generateStandUpdate(gameState: GameState) {
     }
 
     /** Keep prompts short so the model doesn't narrate every round. */
-    const RECENT_ROUNDS_IN_PROMPT = 5
+    const RECENT_ROUNDS_IN_PROMPT = 4
     const roundHistoryRecent = roundHistory.slice(-RECENT_ROUNDS_IN_PROMPT)
     const roundHistoryOlderCount = Math.max(0, numRounds - RECENT_ROUNDS_IN_PROMPT)
 
@@ -166,8 +199,8 @@ Dit was ronde ${currentRound}. De leider ${leader.name} heeft nog ${pointsToWin}
 
     const recentFormLine =
         hotPlayer.name === coldPlayer.name || Math.abs(hotPlayer.avg - coldPlayer.avg) < 0.01
-            ? "Recente vorm: iedereen zit dicht bij elkaar (geen duidelijke 'hot' of 'cold')."
-            : `Recente vorm (laatste ${recentRounds} rondes): ${hotPlayer.name} zit het best in de flow (gem. ${hotPlayer.avg.toFixed(1)}), ${coldPlayer.name} heeft het zwaarder (gem. ${coldPlayer.avg.toFixed(1)}).`
+            ? "Over de laatste rondes zit iedereen dicht bij elkaar."
+            : `Over de laatste ${recentRounds} rondes scoort ${hotPlayer.name} het best, gemiddeld ${hotPlayer.avg.toFixed(1)} per ronde, en ${coldPlayer.name} het slechtst, gemiddeld ${coldPlayer.avg.toFixed(1)}.`
 
     const isGameFinished = gameMode === "schoppenvrouwen" && targetScore
         ? leader.score >= targetScore
@@ -190,113 +223,122 @@ Dit was ronde ${currentRound}. De leider ${leader.name} heeft nog ${pointsToWin}
         }
     }
 
-    const getGameTypeDescription = () => {
-        if (gameMode === "boerenbridge") {
-            return "Dit was een spel Boerenbridge (een Nederlands kaartspel waar je moet inschatten hoeveel slagen je haalt). Positieve scores = goed voorspeld, negatieve scores = mis voorspeld."
-        } else if (gameMode === "schoppenvrouwen" && targetScore) {
-            return `Dit was een spel Schoppenvrouwen (ook wel Duizenden). Het doel was om als eerste ${targetScore} punten te halen.`
-        }
-        return "Dit is een scoretelling spel."
+    const runnerUp = sortedPlayers[1]
+    const gapToSecond = runnerUp ? leader.score - runnerUp.score : 0
+    const lastRoundIndex = numRounds - 1
+    const lastRoundBoard = players
+        .map((p) => ({ name: p.name, score: p.roundScores[lastRoundIndex] ?? 0 }))
+        .sort((a, b) => b.score - a.score)
+    const lastRoundBest = lastRoundBoard[0]
+    const lastRoundWorst = lastRoundBoard[lastRoundBoard.length - 1]
+    if (!lastRoundBest || !lastRoundWorst) {
+        stream.done()
+        return { output: stream.value }
     }
 
-    const roundsDescription = totalRounds 
-        ? `NA ${totalRounds} RONDES` 
-        : `NA ${currentRound} RONDES`
+    const lastRoundLine =
+        lastRoundBest.name === lastRoundWorst.name
+            ? `Laatste gespeelde ronde: ${lastRoundBest.name} haalde ${lastRoundBest.score}.`
+            : `Laatste gespeelde ronde: ${lastRoundBest.name} haalde ${lastRoundBest.score}, ${lastRoundWorst.name} haalde ${lastRoundWorst.score}.`
 
-    const standDescription = totalRounds
-        ? `(na ronde ${currentRound} van ${totalRounds})`
-        : targetScore
-            ? `(na ronde ${currentRound}, doel: ${targetScore} punten)`
-            : `(na ronde ${currentRound})`
-
-    const olderRoundsNote =
-        roundHistoryOlderCount > 0
-            ? `Let op: ${roundHistoryOlderCount} eerdere rondes zijn weggelaten; baseer je niet op elke ronde afzonderlijk.\n\n`
-            : ""
-
-    const FINISHED_HISTORY_TAIL = 10
+    const lastLeadChange = leadChanges.length > 0 ? leadChanges[leadChanges.length - 1] : undefined
+    const FINISHED_HISTORY_TAIL = 6
     const roundHistoryFinishedTail = roundHistory.slice(-FINISHED_HISTORY_TAIL)
     const roundHistoryFinishedOmitted = Math.max(0, numRounds - FINISHED_HISTORY_TAIL)
 
-    const prompt = isGameFinished
-        ? `Je bent een scherpe Nederlandse spelcommentator (NOS-sport, maar dan voor kaarten: droog, slim, geen tierlantijnen). Het spel is AFGELOPEN.
+    const raceLine = !runnerUp
+        ? `${leader.name} staat alleen op ${leader.score}.`
+        : gapToSecond === 0
+          ? `${leader.name} en ${runnerUp.name} staan gelijk op ${leader.score}.`
+          : `${leader.name} heeft ${leader.score}, ${runnerUp.name} heeft ${runnerUp.score}. Het verschil is ${gapToSecond}.`
 
-${getGameTypeDescription()}
+    const stakesLine = targetScore
+        ? `${leader.name} heeft nog ${Math.max(0, targetScore - leader.score)} punten nodig voor ${targetScore}.`
+        : roundsRemaining !== undefined
+          ? roundsRemaining <= 0
+              ? "Er zijn geen rondes meer."
+              : roundsRemaining === 1
+                ? "Er is nog één ronde."
+                : `Er zijn nog ${roundsRemaining} rondes.`
+          : ""
 
-GESLACHT — gebruik consequent de juiste vorm per speler (zie onder; nooit "hij" voor iemand die als vrouw staat, enz.):
+    const sharedBrief = `Voornaamwoorden, gebruik ze zo:
 ${playersGenderText}
 
-EINDSTAND ${roundsDescription}:
+Stand:
 ${standingsText}
 
-WINNAAR: ${leader.name} met ${leader.score} punten${targetScore ? ` (doel was ${targetScore})` : ""}
-${sortedPlayers.length > 1 ? `2: ${sortedPlayers[1].name} (${sortedPlayers[1].score}, ${leader.score - sortedPlayers[1].score} achter)` : ""}
-${sortedPlayers.length > 2 ? `Laatste: ${lastPlace.name} (${lastPlace.score})` : ""}
-
-${roundHistoryFinishedOmitted > 0 ? `(${roundHistoryFinishedOmitted} oude rondes niet hieronder; niet alle rondes bespreken.)\n\n` : ""}LAATSTE RONDES (detail):
-${roundHistoryFinishedTail.join("\n")}
-
-LEIDINGSWISSELINGEN:
-${leadChanges.length > 0 ? leadChanges.join("\n") : "Geen wisseling aan de kop — de winnaar stond vooraan vanaf het eerste moment."}
-
-PEAK & DAL:
-- Beste enkele ronde: ${bestRound.name}, ronde ${bestRound.round}, ${bestRound.score > 0 ? "+" : ""}${bestRound.score}
-- Zwaarste ronde: ${worstRound.name}, ronde ${worstRound.round}, ${worstRound.score}
-- Verschil 1e vs laatste: ${leader.score - lastPlace.score} pt
-
-CONSISTENTIE (goed / mis over het hele spel):
-${consistencyText}
-
-STIJL (belangrijk):
-- Maximaal 5 zinnen totaal — geen lap tekst.
-- Open met de winnaar; daarna kort: spanning, beste moment of leidingsdrama; géén opsomming van elke ronde.
-- Humor: understatement, ironie, één goede punchline — géén willekeurige metaforen ("als een trein in een soufflé"), géén dieren/planeten-vergelijkingen tenzij echt passend.
-- Geen emoji's. Informeel maar strak.
-- ALLEEN de commentaartekst.`
-        : `Je bent een scherpe Nederlandse spelcommentator voor vrienden aan tafel: kort, grappig, intelligent — geen uitzending om de haverklap.
-
-${gameContext}
-
-GESLACHT — gebruik consequent de juiste vorm per speler:
-${playersGenderText}
-
-STAND ${standDescription}:
-${standingsText}
-
-${olderRoundsNote}LAATSTE RONDES:
-${roundHistoryRecent.join("\n")}
-
-KERNCIJFERS:
-- Topronde tot nu toe: ${bestRound.name} (ronde ${bestRound.round}, ${bestRound.score > 0 ? "+" : ""}${bestRound.score})
-- Dieptepunt: ${worstRound.name} (ronde ${worstRound.round}, ${worstRound.score})
-- Kloof 1↔laatste: ${leader.score - lastPlace.score} pt
-${targetScore ? `- ${leader.name} nog ${targetScore - leader.score} tot ${targetScore}` : ""}
+${lastRoundLine}
+Beste ronde van de avond tot nu toe: ${bestRound.name} in ronde ${bestRound.round} met ${bestRound.score}.
+Slechtste ronde: ${worstRound.name} in ronde ${worstRound.round} met ${worstRound.score}.
+Kloof tussen eerste en laatste: ${leader.score - lastPlace.score}.
+${lastLeadChange ? `Laatste wissel aan de kop: ${lastLeadChange}.` : "De kop is nog niet gewisseld."}
+Aantal keer dat de kop wisselde: ${Math.max(0, leadChanges.length)}.
 
 ${recentFormLine}
 
-CONSISTENTIE (kort):
-${consistencyText}
+Wie vaak raak of mis zit:
+${consistencyText}`
 
-STIJL (belangrijk):
-- Maximaal 3 zinnen. Liever 2 strakke zinnen dan 3 wollige.
-- Geen opsomming van alle rondes; max. één concreet rondemoment als het echt iets toevoegt.
-- Humor: droog, sportdesk-achtig, woordspel mag — géén geforceerde vergelijkingen of surrealistische beelden.
-- Spanningsniveau alleen als het echt dichtbij elkaar zit of de kop nog kan wisselen; geen kunstmatige hype.
-${targetScore ? `- Zo nodig één zin over afstand tot ${targetScore} punten.` : totalRounds ? `- Zo nodig één zin over resterende rondes (${roundsRemaining ?? "?"}).` : ""}
-- Geen emoji's. ALLEEN de commentaartekst.`
+    const prompt = isGameFinished
+        ? `Het spel is uit.
+
+${getFinishedGameContext(gameMode, targetScore)}
+
+${sharedBrief}
+
+${roundHistoryFinishedOmitted > 0 ? `${roundHistoryFinishedOmitted} oudere rondes staan hier niet. Niet doen alsof je ze stuk voor stuk gezien hebt.\n\n` : ""}Laatste rondes, alleen als bron, niet om op te noemen:
+${roundHistoryFinishedTail.join("\n")}
+
+Schrijf vier of vijf zinnen.
+Eerste zin: wie won, met hoeveel, en of dat verdiend of nipt was.
+Daarna: hoe de kop liep, of juist niet.
+Eén zin over het moment dat de avond kleurde, uit de cijfers hierboven.
+Sluit af met degene die laatste werd, droog, niet gemeen.`
+        : `${gameContext}
+
+${raceLine}
+${stakesLine}
+
+${sharedBrief}
+
+${roundHistoryOlderCount > 0 ? `${roundHistoryOlderCount} oudere rondes staan hier niet. Niet doen alsof je ze stuk voor stuk gezien hebt.\n\n` : ""}Laatste rondes, alleen als bron:
+${roundHistoryRecent.join("\n")}
+
+Schrijf drie of vier zinnen.
+Eerste zin: hoe de stand nu voelt, met namen en het verschil.
+Tweede zin: het patroon of het ene rondemoment dat die stand verklaart.
+Laatste zin: ${stakesLine ? "wat er nog te halen valt, alleen als dat echt iets verandert." : "een droge slotzin over degene die de avond kleurt."}
+Als het verschil groot is, zeg dat het uit is. Verzin geen spanning.`
 
     ;(async () => {
-        const { textStream } = streamText({
-            model: openai("gpt-4o-mini"),
-            prompt,
-            maxOutputTokens: isGameFinished ? 320 : 200
-        })
+        let wrote = false
+        try {
+            const { textStream } = streamText({
+                model: STAND_UPDATE_MODEL,
+                system: STAND_UPDATE_SYSTEM,
+                prompt,
+                temperature: 0.8,
+                maxOutputTokens: isGameFinished ? 420 : 280
+            })
 
-        for await (const delta of textStream) {
-            stream.update(delta)
+            for await (const delta of textStream) {
+                wrote = true
+                stream.update(delta)
+            }
+
+            stream.done()
+        } catch (error) {
+            console.error("Stand update failed:", error)
+            const message = error instanceof Error ? error.message : ""
+            const friendly = message.includes("credit card")
+                ? "Vercel AI Gateway heeft nog een betaalmethode nodig voor Grok. Voeg een kaart toe in je Vercel-team, dan werkt deze update."
+                : "Oeps, kon geen update genereren. Probeer het nog eens!"
+            if (!wrote) {
+                stream.update(friendly)
+            }
+            stream.done()
         }
-
-        stream.done()
     })()
 
     return { output: stream.value }

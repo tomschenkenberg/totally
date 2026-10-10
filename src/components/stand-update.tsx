@@ -58,7 +58,10 @@ function StandUpdatePanel({ gameState, hasEnoughData }: { gameState: StandUpdate
                 }
             }
 
-            if (fullText) {
+            const isFailure =
+                fullText.startsWith("Oeps, kon geen update") ||
+                fullText.startsWith("Vercel AI Gateway")
+            if (fullText && !isFailure) {
                 setCachedStandUpdate(stateHash, fullText)
             }
         } catch (error) {

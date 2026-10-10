@@ -43,3 +43,4 @@ public/sw*
 public/swe-worker*
 workbox-*
 swe-worker-*
+.env*

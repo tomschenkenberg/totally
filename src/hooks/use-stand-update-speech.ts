@@ -1,6 +1,31 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
+
+function speakWithBrowser(
+    text: string,
+    utteranceRef: MutableRefObject<SpeechSynthesisUtterance | null>,
+    setIsSpeaking: Dispatch<SetStateAction<boolean>>
+) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+        setIsSpeaking(false)
+        return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = "nl-NL"
+    utterance.onend = () => {
+        setIsSpeaking(false)
+        utteranceRef.current = null
+    }
+    utterance.onerror = () => {
+        setIsSpeaking(false)
+        utteranceRef.current = null
+    }
+    utteranceRef.current = utterance
+    setIsSpeaking(true)
+    window.speechSynthesis.speak(utterance)
+}
 
 export function useStandUpdateSpeech() {
     const [isSpeaking, setIsSpeaking] = useState(false)
@@ -31,23 +56,6 @@ export function useStandUpdateSpeech() {
                 (audioRef.current && !audioRef.current.paused)
             ) {
                 stop()
-                return
-            }
-
-            if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                const utterance = new SpeechSynthesisUtterance(text)
-                utterance.lang = "nl-NL"
-                utterance.onend = () => {
-                    setIsSpeaking(false)
-                    utteranceRef.current = null
-                }
-                utterance.onerror = () => {
-                    setIsSpeaking(false)
-                    utteranceRef.current = null
-                }
-                utteranceRef.current = utterance
-                setIsSpeaking(true)
-                window.speechSynthesis.speak(utterance)
                 return
             }
 
@@ -90,10 +98,13 @@ export function useStandUpdateSpeech() {
                 audio.src = currentUrl
                 setIsSpeaking(true)
                 await audio.play()
+                return
             } catch (error) {
                 console.error("Failed to generate speech:", error)
-                setIsSpeaking(false)
                 if (audioUrl) URL.revokeObjectURL(audioUrl)
+                if (audioRef.current !== audio) return
+                audioRef.current = null
+                speakWithBrowser(text, utteranceRef, setIsSpeaking)
             } finally {
                 setIsLoadingAudio(false)
             }

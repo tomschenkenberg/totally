@@ -7,6 +7,7 @@ import {
 import {
     BOEREN_BRIDGE_ROUNDS,
     calculateBoerenBridgeScore,
+    getSchoppenvrouwenFinishingRoundCloserId,
     isSchoppenvrouwenRoundFullyScored,
     SCHOPPENVROUWEN_TARGET_SCORE,
     type BoerenBridgeGame,
@@ -26,6 +27,8 @@ export type StandUpdateGameState = {
     targetScore?: number
     roundNumbers?: number[]
     gameMode: GameMode
+    /** Schoppenvrouwen: set once someone reached the target. Not always the top score (closer wins ties). */
+    winnerName?: string
 }
 
 export function buildBoerenBridgeStandState(
@@ -75,11 +78,21 @@ export function buildSchoppenvrouwenStandState(
         }
     })
 
+    const atTarget = game.playerOrder.filter((id) => getTotal(id) >= SCHOPPENVROUWEN_TARGET_SCORE)
+    const closerId = getSchoppenvrouwenFinishingRoundCloserId(game)
+    const winnerId =
+        atTarget.length === 0
+            ? undefined
+            : closerId !== null && atTarget.includes(closerId)
+              ? closerId
+              : atTarget[0]
+
     return {
         players: playerStandings,
         currentRound: game.currentRoundIndex + 1,
         targetScore: SCHOPPENVROUWEN_TARGET_SCORE,
-        gameMode: "schoppenvrouwen"
+        gameMode: "schoppenvrouwen",
+        winnerName: winnerId !== undefined ? players[winnerId]?.name || "Onbekend" : undefined
     }
 }
 

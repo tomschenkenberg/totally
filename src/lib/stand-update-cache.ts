@@ -1,4 +1,4 @@
-const CACHE_KEY = "totally-stand-update-cache-v2"
+const CACHE_KEY = "totally-stand-update-cache-v3"
 
 interface StandUpdateCacheEntry {
     hash: string
